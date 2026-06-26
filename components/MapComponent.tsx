@@ -50,6 +50,31 @@ export default function MapComponent({
       window._AMapSecurityConfig = { securityJsCode: securityCode };
     }
 
+    // 定义全局复制函数（InfoWindow 的 onclick 调用）
+    (window as any).__copyLocationName = (name: string) => {
+      navigator.clipboard.writeText(name).then(
+        () => {
+          // 复制成功，更新按钮文字反馈
+          const btn = document.querySelector('.amap-info-window button') as HTMLButtonElement;
+          if (btn) {
+            const original = btn.textContent;
+            btn.textContent = '已复制';
+            btn.style.color = '#16a34a';
+            btn.style.background = '#dcfce7';
+            setTimeout(() => {
+              btn.textContent = original || '复制';
+              btn.style.color = '#16a34a';
+              btn.style.background = '#f0fdf4';
+            }, 1200);
+          }
+        },
+        (err) => {
+          console.error('复制失败:', err);
+          alert('复制失败，请手动复制');
+        }
+      );
+    };
+
     let destroyed = false;
 
     loadAMap({ key: apiKey })
@@ -129,6 +154,8 @@ export default function MapComponent({
       }
       markers.clear();
       circles.clear();
+      // 清理全局复制函数
+      delete (window as any).__copyLocationName;
     };
   }, [locations, target, onLocationClick]);
 
@@ -185,8 +212,14 @@ export default function MapComponent({
     map.setZoomAndCenter(15, lnglat);
     if (infoWindowRef.current) {
       infoWindowRef.current.setContent(
-        `<div style="padding:4px 6px;min-width:160px;line-height:1.6;">
-          <div style="font-weight:600;font-size:14px;color:#1f2937;margin-bottom:4px;">${id}. ${name}</div>
+        `<div style="position:relative;padding:4px 6px;min-width:160px;line-height:1.6;">
+          <div style="font-weight:600;font-size:14px;color:#1f2937;margin-bottom:4px;padding-right:50px;">${id}. ${name}</div>
+          <button
+            onclick="window.__copyLocationName('${name.replace(/'/g, "\\'")}')"
+            style="position:absolute;top:2px;right:2px;padding:4px 8px;font-size:11px;color:#16a34a;background:#f0fdf4;border:1px solid #16a34a;border-radius:4px;cursor:pointer;font-weight:500;transition:all 0.2s;"
+            onmouseover="this.style.background='#dcfce7'"
+            onmouseout="this.style.background='#f0fdf4'"
+          >复制</button>
           <div style="font-size:12px;color:#6b7280;">${address}</div>
           <div style="font-size:12px;color:#1677ff;margin-top:4px;">距${target.name} <b>${formatDistance(distance)}</b> · 范围${radius}米</div>
         </div>`

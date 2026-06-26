@@ -1,6 +1,5 @@
 'use client'
 
-import AMapLoader from '@amap/amap-jsapi-loader'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { MapPin, Navigation2 } from 'lucide-react'
 
@@ -70,10 +69,12 @@ export default function Page() {
     }
     window._AMapSecurityConfig = { securityJsCode: securityCode }
 
-    AMapLoader.load({
-      key: jsKey,
-      version: '2.0',
-      plugins: ['AMap.MarkerCluster']
+    import('@amap/amap-jsapi-loader').then(({ default: AMapLoader }) => {
+      return AMapLoader.load({
+        key: jsKey,
+        version: '2.0',
+        plugins: ['AMap.MarkerCluster']
+      })
     }).then((AMap) => {
       const map = new AMap.Map(mapRef.current!, {
         center: [data.home.location.lng, data.home.location.lat],

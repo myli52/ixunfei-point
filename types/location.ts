@@ -1,0 +1,30 @@
+export interface Location {
+  name: string;
+  /** 原始展示地址，严格保留数据源原文，不做任何修改 */
+  address: string;
+  radius: number;
+  /** 预编码并固化的坐标 [经度, 纬度] */
+  lnglat: [number, number];
+  /** 到目标地点的直线距离（米），构建时预计算 */
+  distance: number;
+  distanceText?: string;
+}
+
+export interface TargetLocation {
+  name: string;
+  /** 原始展示地址 */
+  address: string;
+  isTarget: true;
+  /** 预编码并固化的坐标 [经度, 纬度] */
+  lnglat: [number, number];
+}
+
+export interface LocationData {
+  target: TargetLocation;
+  locations: Location[];
+}
+
+export interface MapConfig {
+  center: [number, number];
+  zoom: number;
+}

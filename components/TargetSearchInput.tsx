@@ -1,12 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, X, MapPin, Loader2, AlertCircle } from 'lucide-react';
 import type { TargetLocation } from '@/types/location';
-
-interface TargetSearchInputProps {
-  currentTarget: TargetLocation;
-  onTargetChange: (target: TargetLocation) => void;
-}
 
 interface Suggestion {
   name: string;
@@ -14,104 +10,115 @@ interface Suggestion {
   location: [number, number];
 }
 
+interface TargetSearchInputProps {
+  /** 关闭时回调（点击外部 / Esc / 选中后） */
+  onClose: () => void;
+  onTargetChange: (target: TargetLocation) => void;
+}
+
+/**
+ * 内联展开的搜索输入框 —— 由 Hero 卡片以 inline 形式承载。
+ * - 实时 POI 建议（高德 AutoComplete，防抖 300ms）
+ * - 键盘 ↑↓ 选择、Enter 确认、Esc 关闭
+ * - 错误以 inline 提示，不打断流程
+ */
 export default function TargetSearchInput({
-  currentTarget,
+  onClose,
   onTargetChange,
 }: TargetSearchInputProps) {
-  const [isEditing, setIsEditing] = useState(false);
   const [keyword, setKeyword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // 实时获取搜索建议
+  // 点击外部关闭
   useEffect(() => {
-    if (!keyword.trim() || !isEditing) {
+    const handler = (e: MouseEvent) => {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
+        onClose();
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  // 实时搜索建议
+  useEffect(() => {
+    if (!keyword.trim()) {
       setSuggestions([]);
+      setActiveIndex(-1);
       return;
     }
 
     setLoadingSuggestions(true);
-    const timer = setTimeout(async () => {
-      try {
-        const AMap = (window as any).AMap;
-        if (!AMap) return;
-
-        AMap.plugin('AMap.AutoComplete', () => {
-          const autoComplete = new AMap.AutoComplete({
-            city: '合肥',
-          });
-
-          autoComplete.search(keyword, (status: string, result: any) => {
-            if (status === 'complete' && result.tips) {
-              const validTips = result.tips
-                .filter((tip: any) => tip.location && tip.location.lng)
-                .slice(0, 5)
-                .map((tip: any) => ({
-                  name: tip.name,
-                  address: tip.address || tip.district,
-                  location: [tip.location.lng, tip.location.lat],
-                }));
-              setSuggestions(validTips);
-            } else {
-              setSuggestions([]);
-            }
-            setLoadingSuggestions(false);
-          });
-        });
-      } catch (err) {
-        console.error('获取建议失败:', err);
+    const timer = setTimeout(() => {
+      const AMap = (window as any).AMap;
+      if (!AMap) {
         setLoadingSuggestions(false);
+        return;
       }
-    }, 300); // 防抖300ms
+
+      AMap.plugin('AMap.AutoComplete', () => {
+        const autoComplete = new AMap.AutoComplete({ city: '合肥' });
+        autoComplete.search(keyword, (status: string, result: any) => {
+          if (status === 'complete' && result.tips) {
+            const tips = result.tips
+              .filter((tip: any) => tip.location && tip.location.lng)
+              .slice(0, 6)
+              .map((tip: any) => ({
+                name: tip.name,
+                address: tip.address || tip.district || '',
+                location: [tip.location.lng, tip.location.lat] as [
+                  number,
+                  number
+                ],
+              }));
+            setSuggestions(tips);
+            setActiveIndex(tips.length > 0 ? 0 : -1);
+          } else {
+            setSuggestions([]);
+            setActiveIndex(-1);
+          }
+          setLoadingSuggestions(false);
+        });
+      });
+    }, 300);
 
     return () => clearTimeout(timer);
-  }, [keyword, isEditing]);
+  }, [keyword]);
 
-  const handleSelectSuggestion = (suggestion: Suggestion) => {
-    const newTarget: TargetLocation = {
-      name: suggestion.name,
-      lnglat: suggestion.location,
-    };
-
-    onTargetChange(newTarget);
-    setIsEditing(false);
-    setKeyword('');
-    setSuggestions([]);
-    setError(null);
+  const selectSuggestion = (s: Suggestion) => {
+    onTargetChange({ name: s.name, lnglat: s.location });
+    onClose();
   };
 
   const handleSearch = async () => {
-    if (!keyword.trim()) {
-      setError('请输入地点名称或地址');
+    if (!keyword.trim()) return;
+    if (suggestions[0]) {
+      // 优先用第一条建议（更准）
+      selectSuggestion(suggestions[0]);
       return;
     }
 
     setLoading(true);
     setError(null);
-
-    // 设置超时
     const timeoutId = setTimeout(() => {
       setLoading(false);
-      setError('未找到该地点，请从下拉建议中选择，或输入更详细的地址');
+      setError('未找到该地点，请尝试更详细的地址');
     }, 8000);
 
     try {
       const { geocodeAddress } = await import('@/lib/amap');
       const result = await geocodeAddress(keyword);
-
       clearTimeout(timeoutId);
-
-      const newTarget: TargetLocation = {
-        name: keyword,
-        lnglat: result.lnglat,
-      };
-
-      onTargetChange(newTarget);
-      setIsEditing(false);
-      setKeyword('');
-      setSuggestions([]);
+      onTargetChange({ name: keyword, lnglat: result.lnglat });
+      onClose();
     } catch (err: any) {
       clearTimeout(timeoutId);
       setError(err.message || '搜索失败，请重试');
@@ -120,101 +127,150 @@ export default function TargetSearchInput({
     }
   };
 
-  const handleCancel = () => {
-    setIsEditing(false);
-    setKeyword('');
-    setSuggestions([]);
-    setError(null);
-  };
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && suggestions.length === 0) {
-      handleSearch();
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((i) =>
+        suggestions.length === 0 ? -1 : (i + 1) % suggestions.length
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((i) =>
+        suggestions.length === 0
+          ? -1
+          : (i - 1 + suggestions.length) % suggestions.length
+      );
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeIndex >= 0 && suggestions[activeIndex]) {
+        selectSuggestion(suggestions[activeIndex]);
+      } else {
+        handleSearch();
+      }
     } else if (e.key === 'Escape') {
-      handleCancel();
+      onClose();
     }
   };
 
   return (
-    <div>
-      {!isEditing ? (
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            <div className="text-sm text-gray-500 mb-0.5">距离参照中心</div>
-            <div className="text-lg font-semibold text-gray-900 truncate">{currentTarget.name}</div>
-          </div>
+    <div ref={containerRef} className="animate-fade-in-up">
+      {/* 输入框 */}
+      <div className="relative">
+        <Search
+          className="absolute left-3.5 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400 pointer-events-none"
+          strokeWidth={2}
+        />
+        <input
+          type="text"
+          value={keyword}
+          onChange={(e) => setKeyword(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="搜索地点、地址、POI…"
+          autoFocus
+          disabled={loading}
+          className="w-full pl-11 pr-11 py-3 text-[15px] text-slate-900 placeholder:text-slate-400 bg-white border border-slate-200 rounded-xl shadow-soft focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all disabled:bg-slate-50"
+        />
+        {keyword && !loading && (
           <button
-            onClick={() => setIsEditing(true)}
-            className="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors whitespace-nowrap"
+            onClick={() => setKeyword('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            aria-label="清空搜索"
           >
-            🔍 更换中心
+            <X className="w-4 h-4" strokeWidth={2.5} />
           </button>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <div className="text-sm font-medium text-gray-700 mb-2">输入新的参照中心</div>
-          <div className="relative">
-            <input
-              type="text"
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="搜索地点、地址、POI..."
-              autoFocus
-              disabled={loading}
-              className="w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500"
-            />
+        )}
+        {loading && (
+          <Loader2
+            className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-brand-500 animate-spin"
+            strokeWidth={2}
+          />
+        )}
+      </div>
 
-            {/* 搜索建议列表 */}
-            {suggestions.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                {suggestions.map((suggestion, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSelectSuggestion(suggestion)}
-                    className="w-full px-3 py-2 text-left hover:bg-blue-50 transition-colors border-b border-gray-100 last:border-b-0"
-                  >
-                    <div className="text-sm font-medium text-gray-900">{suggestion.name}</div>
-                    <div className="text-xs text-gray-500">{suggestion.address}</div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* 加载建议中 */}
-            {loadingSuggestions && keyword && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-sm text-gray-500">
-                搜索中...
-              </div>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <button
-              onClick={handleSearch}
-              disabled={loading || !keyword.trim()}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-            >
-              {loading ? '搜索中...' : '确定'}
-            </button>
-            <button
-              onClick={handleCancel}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
-            >
-              取消
-            </button>
-          </div>
-
-          {error && (
-            <div className="text-sm text-red-600 bg-red-50 px-3 py-2 rounded-lg">{error}</div>
-          )}
-
-          <div className="text-xs text-gray-500">
-            提示：点击建议列表或按回车键搜索
-          </div>
+      {/* 建议列表 / 错误提示 */}
+      {(suggestions.length > 0 ||
+        loadingSuggestions ||
+        error ||
+        (keyword && !loading && suggestions.length === 0)) && (
+        <div className="mt-2 bg-white border border-slate-200 rounded-xl shadow-card overflow-hidden">
+          {error ? (
+            <div className="px-4 py-3 flex items-start gap-2.5 text-sm text-rose-700 bg-rose-50">
+              <AlertCircle
+                className="w-4 h-4 mt-0.5 shrink-0"
+                strokeWidth={2.5}
+              />
+              <span>{error}</span>
+            </div>
+          ) : loadingSuggestions ? (
+            <div className="px-4 py-3 flex items-center gap-2 text-sm text-slate-500">
+              <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2} />
+              <span>搜索中…</span>
+            </div>
+          ) : suggestions.length > 0 ? (
+            <ul role="listbox">
+              {suggestions.map((s, i) => {
+                const active = i === activeIndex;
+                return (
+                  <li key={i} role="option" aria-selected={active}>
+                    <button
+                      onMouseEnter={() => setActiveIndex(i)}
+                      onClick={() => selectSuggestion(s)}
+                      className={`w-full px-4 py-2.5 text-left flex items-start gap-3 transition-colors border-l-2 ${
+                        active
+                          ? 'bg-brand-50 border-brand-500'
+                          : 'border-transparent hover:bg-slate-50'
+                      }`}
+                    >
+                      <MapPin
+                        className={`w-4 h-4 mt-0.5 shrink-0 ${
+                          active ? 'text-brand-600' : 'text-slate-400'
+                        }`}
+                        strokeWidth={2}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium text-slate-900 truncate">
+                          {s.name}
+                        </div>
+                        {s.address && (
+                          <div className="text-xs text-slate-500 truncate mt-0.5">
+                            {s.address}
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : keyword ? (
+            <div className="px-4 py-3 text-sm text-slate-500">
+              未找到匹配建议，按 Enter 直接搜索
+            </div>
+          ) : null}
         </div>
       )}
+
+      {/* 键盘提示（极弱视觉权重） */}
+      <div className="mt-2 px-1 text-[11px] text-slate-400 flex items-center gap-3">
+        <span>
+          <kbd className="font-mono px-1 py-0.5 bg-slate-100 rounded text-[10px]">
+            ↑↓
+          </kbd>{' '}
+          切换
+        </span>
+        <span>
+          <kbd className="font-mono px-1 py-0.5 bg-slate-100 rounded text-[10px]">
+            Enter
+          </kbd>{' '}
+          确认
+        </span>
+        <span>
+          <kbd className="font-mono px-1 py-0.5 bg-slate-100 rounded text-[10px]">
+            Esc
+          </kbd>{' '}
+          关闭
+        </span>
+      </div>
     </div>
   );
 }

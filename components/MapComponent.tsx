@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { LocateFixed, Loader2, AlertCircle } from 'lucide-react';
 import { loadAMap } from '@/lib/amap';
 import { formatDistance } from '@/lib/utils';
 import type { Location, TargetLocation } from '@/types/location';
@@ -12,15 +13,30 @@ interface MapComponentProps {
   onLocationClick: (location: Location) => void;
 }
 
-// 普通编号标记样式（蓝色圆牌）
-function dotContent(id: number) {
-  return `<div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;background:#1677ff;color:#fff;font-size:12px;font-weight:600;border:2px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(22,119,255,.4);cursor:pointer;">${id}</div>`;
+// 距离语义色（与 DESIGN.md 对齐）
+function toneColor(distance: number): { bg: string; ring: string } {
+  if (distance < 3000) return { bg: '#10b981', ring: 'rgba(16,185,129,.35)' };
+  if (distance < 8000) return { bg: '#f59e0b', ring: 'rgba(245,158,11,.35)' };
+  return { bg: '#f43f5e', ring: 'rgba(244,63,94,.35)' };
 }
 
-// 选中态标记样式（放大 + 绿色）
-function activeDotContent(id: number) {
-  return `<div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:#16a34a;color:#fff;font-size:15px;font-weight:700;border:3px solid #fff;border-radius:50%;box-shadow:0 4px 14px rgba(22,163,74,.6);cursor:pointer;">${id}</div>`;
+// 默认编号标记（根据距离染色，更易识别远近）
+function dotContent(id: number, distance: number) {
+  const { bg } = toneColor(distance);
+  return `<div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;background:${bg};color:#fff;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;border:2px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(15,23,42,.25);cursor:pointer;">${id}</div>`;
 }
+
+// 选中态标记（深蓝品牌色，最强视觉权重）
+function activeDotContent(id: number) {
+  return `<div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:#10b981;color:#fff;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;border:3px solid #fff;border-radius:50%;box-shadow:0 6px 18px rgba(16,185,129,.55);cursor:pointer;">${id}</div>`;
+}
+
+// 目标地点标记（红色水滴 + 居中圆点）
+const TARGET_MARKER_HTML = `
+<div style="position:relative;width:0;height:0;">
+  <div style="position:absolute;left:-15px;top:-36px;width:30px;height:30px;background:linear-gradient(135deg,#ef4444,#dc2626);border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 4px 14px rgba(220,38,38,.45);"></div>
+  <div style="position:absolute;left:-5px;top:-27px;width:10px;height:10px;background:#fff;border-radius:50%;"></div>
+</div>`;
 
 export default function MapComponent({
   locations,
@@ -33,12 +49,12 @@ export default function MapComponent({
   const markerMapRef = useRef<Map<number, any>>(new Map());
   const circleMapRef = useRef<Map<number, any>>(new Map());
   const infoWindowRef = useRef<any>(null);
-  const userMarkerRef = useRef<any>(null); // 用户位置标记
-  const infoWindowTimerRef = useRef<any>(null); // 信息窗延迟打开的定时器
+  const userMarkerRef = useRef<any>(null);
+  const infoWindowTimerRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [locating, setLocating] = useState(false); // 正在定位
-  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
 
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_AMAP_KEY;
@@ -54,34 +70,44 @@ export default function MapComponent({
       window._AMapSecurityConfig = { securityJsCode: securityCode };
     }
 
-    // 定义全局复制函数（InfoWindow 的 onclick 调用）
+    // 全局复制函数
     (window as any).__copyLocationName = (name: string) => {
-      navigator.clipboard.writeText(name).then(
-        () => {
-          // 复制成功，更新按钮文字反馈
-          const btn = document.querySelector('.amap-info-window button') as HTMLButtonElement;
+      navigator.clipboard
+        .writeText(name)
+        .then(() => {
+          const btn = document.querySelector(
+            '.amap-info-window button[data-action="copy"]'
+          ) as HTMLButtonElement;
           if (btn) {
-            const original = btn.textContent;
             btn.textContent = '已复制';
-            btn.style.color = '#16a34a';
-            btn.style.background = '#dcfce7';
+            btn.style.background = '#10b981';
+            btn.style.color = '#fff';
+            btn.style.borderColor = '#10b981';
             setTimeout(() => {
-              btn.textContent = original || '复制';
-              btn.style.color = '#16a34a';
-              btn.style.background = '#f0fdf4';
+              btn.textContent = '复制';
+              btn.style.background = '#fff';
+              btn.style.color = '#0f766e';
+              btn.style.borderColor = '#d1fae5';
             }, 1200);
           }
-        },
-        (err) => {
-          console.error('复制失败:', err);
-          alert('复制失败，请手动复制');
-        }
-      );
+        })
+        .catch(() => alert('复制失败，请手动复制'));
     };
 
     let destroyed = false;
+    // 在 effect 顶部缓存 ref，避免 cleanup 时引用变化的 lint 警告
+    const markerStore = markerMapRef.current;
+    const circleStore = circleMapRef.current;
 
-    loadAMap({ key: apiKey, plugins: ['AMap.Geocoder', 'AMap.AutoComplete'] })
+    loadAMap({
+      key: apiKey,
+      plugins: [
+        'AMap.Geocoder',
+        'AMap.AutoComplete',
+        'AMap.Scale',
+        'AMap.ToolBar',
+      ],
+    })
       .then((AMap) => {
         if (destroyed || !mapContainerRef.current) return;
 
@@ -89,21 +115,34 @@ export default function MapComponent({
           center: target.lnglat,
           zoom: 12,
           viewMode: '2D',
+          mapStyle: 'amap://styles/normal',
         });
         mapRef.current = map;
 
+        // 缩放/比例尺控件（右下角的官方控件）
+        try {
+          map.addControl(new AMap.Scale({ position: 'LB' }));
+          map.addControl(
+            new AMap.ToolBar({
+              position: 'RT',
+              offset: [12, 12],
+              liteStyle: true,
+            })
+          );
+        } catch {}
+
         const infoWindow = new AMap.InfoWindow({
-          offset: new AMap.Pixel(0, -16),
+          offset: new AMap.Pixel(0, -18),
           isCustom: false,
+          closeWhenClickMap: true,
         });
         infoWindowRef.current = infoWindow;
 
-        // 目标地点（红色水滴标记）
+        // 目标地点
         const targetMarker = new AMap.Marker({
           position: target.lnglat,
           zIndex: 300,
-          content:
-            '<div style="position:relative;width:0;height:0;"><div style="position:absolute;left:-15px;top:-34px;width:30px;height:30px;background:#ef4444;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(0,0,0,.35);"></div><div style="position:absolute;left:-9px;top:-28px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;">★</div></div>',
+          content: TARGET_MARKER_HTML,
           offset: new AMap.Pixel(0, 0),
         });
         targetMarker.setMap(map);
@@ -111,26 +150,25 @@ export default function MapComponent({
         const allMarkers = [targetMarker];
 
         locations.forEach((loc) => {
-          // 200/1000 米范围圈
+          const { bg, ring } = toneColor(loc.distance);
           const circle = new AMap.Circle({
             center: loc.lnglat,
             radius: loc.radius,
-            strokeColor: '#1677ff',
-            strokeOpacity: 0.4,
+            strokeColor: bg,
+            strokeOpacity: 0.35,
             strokeWeight: 1,
-            fillColor: '#1677ff',
-            fillOpacity: 0.08,
+            fillColor: bg,
+            fillOpacity: 0.06,
             bubble: true,
           });
           circle.setMap(map);
           circleMapRef.current.set(loc.id, circle);
 
-          // 编号标记
           const marker = new AMap.Marker({
             position: loc.lnglat,
             title: `${loc.id}. ${loc.name}`,
-            content: dotContent(loc.id),
-            offset: new AMap.Pixel(-12, -12),
+            content: dotContent(loc.id, loc.distance),
+            offset: new AMap.Pixel(-13, -13),
             zIndex: 100,
           });
           marker.on('click', () => onLocationClick(loc));
@@ -150,8 +188,6 @@ export default function MapComponent({
 
     return () => {
       destroyed = true;
-      const markers = markerMapRef.current;
-      const circles = circleMapRef.current;
       if (userMarkerRef.current) {
         userMarkerRef.current.setMap(null);
         userMarkerRef.current = null;
@@ -160,39 +196,42 @@ export default function MapComponent({
         mapRef.current.destroy();
         mapRef.current = null;
       }
-      markers.clear();
-      circles.clear();
-      // 清理全局复制函数
+      markerStore.clear();
+      circleStore.clear();
       delete (window as any).__copyLocationName;
     };
   }, [locations, target, onLocationClick]);
 
-  // 选中地点：居中、放大标记、弹出详情、高亮圆圈
+  // 选中态：高亮 + 平移 + 延迟弹窗
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     const AMap = (window as any).AMap;
 
-    // 清除之前的信息窗延迟任务（避免快速切换时打开旧信息窗）
     if (infoWindowTimerRef.current) {
       clearTimeout(infoWindowTimerRef.current);
       infoWindowTimerRef.current = null;
     }
 
-    // 重置所有标记与圆圈样式
+    // 重置
     markerMapRef.current.forEach((marker, id) => {
-      marker.setContent(dotContent(id));
-      marker.setOffset(new AMap.Pixel(-12, -12));
+      const loc = locations.find((l) => l.id === id);
+      if (!loc) return;
+      marker.setContent(dotContent(id, loc.distance));
+      marker.setOffset(new AMap.Pixel(-13, -13));
       marker.setzIndex(100);
     });
-    circleMapRef.current.forEach((circle) => {
+    circleMapRef.current.forEach((circle, id) => {
+      const loc = locations.find((l) => l.id === id);
+      if (!loc) return;
+      const { bg } = toneColor(loc.distance);
       circle.setOptions({
-        strokeColor: '#1677ff',
-        strokeOpacity: 0.4,
+        strokeColor: bg,
+        strokeOpacity: 0.35,
         strokeWeight: 1,
-        fillColor: '#1677ff',
-        fillOpacity: 0.08,
+        fillColor: bg,
+        fillOpacity: 0.06,
       });
     });
 
@@ -201,111 +240,110 @@ export default function MapComponent({
       return;
     }
 
-    const { id, name, address, radius, distance, lnglat } = selectedLocation;
+    const { id, lnglat } = selectedLocation;
 
-    // 高亮选中标记
     const marker = markerMapRef.current.get(id);
     if (marker) {
       marker.setContent(activeDotContent(id));
-      marker.setOffset(new AMap.Pixel(-17, -17));
+      marker.setOffset(new AMap.Pixel(-18, -18));
       marker.setzIndex(250);
     }
-    // 高亮选中圆圈
     const circle = circleMapRef.current.get(id);
     if (circle) {
       circle.setOptions({
-        strokeColor: '#16a34a',
+        strokeColor: '#10b981',
         strokeOpacity: 0.9,
         strokeWeight: 2,
-        fillColor: '#16a34a',
+        fillColor: '#10b981',
         fillOpacity: 0.15,
       });
     }
 
-    // 平滑平移并放大到选中地点（600ms 动画）
     map.setZoom(15);
     map.panTo(lnglat, 600);
 
-    // 延迟打开信息窗，等待平移动画完成，避免信息窗的自动调整干扰动画
-    const currentId = id; // 捕获当前 id 用于对比
+    const currentId = id;
     infoWindowTimerRef.current = setTimeout(() => {
-      // 再次检查是否还是当前选中的地点（防止快速切换时打开旧信息窗）
       if (infoWindowRef.current && selectedLocation?.id === currentId) {
         const loc = selectedLocation;
-        infoWindowRef.current.setContent(
-          `<div style="position:relative;padding:4px 6px;min-width:160px;line-height:1.6;">
-            <div style="font-weight:600;font-size:14px;color:#1f2937;margin-bottom:4px;padding-right:50px;">${loc.id}. ${loc.name}</div>
+        const safeName = loc.name.replace(/'/g, "\\'");
+        infoWindowRef.current.setContent(`
+          <div style="font-family:Inter,-apple-system,system-ui,sans-serif;padding:12px 14px 11px;min-width:200px;max-width:260px;background:#fff;">
+            <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;">
+              <span style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#10b981;color:#fff;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;border-radius:50%;">${loc.id}</span>
+              <span style="flex:1;font-weight:600;font-size:14px;color:#0f172a;line-height:1.4;">${loc.name}</span>
+            </div>
+            <div style="font-size:11px;color:#94a3b8;line-height:1.5;margin-bottom:8px;">${loc.address}</div>
+            <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:#ecfdf5;border-radius:8px;font-size:12px;color:#065f46;">
+              <span>距离</span>
+              <b style="font-variant-numeric:tabular-nums;color:#10b981;font-weight:700;">${formatDistance(loc.distance)}</b>
+              <span style="color:#94a3b8;">·</span>
+              <span style="color:#475569;">范围 ${loc.radius} 米</span>
+            </div>
             <button
-              onclick="window.__copyLocationName('${loc.name.replace(/'/g, "\\'")}')"
-              style="position:absolute;top:2px;right:2px;padding:4px 8px;font-size:11px;color:#16a34a;background:#f0fdf4;border:1px solid #16a34a;border-radius:4px;cursor:pointer;font-weight:500;transition:all 0.2s;"
-              onmouseover="this.style.background='#dcfce7'"
-              onmouseout="this.style.background='#f0fdf4'"
+              data-action="copy"
+              onclick="window.__copyLocationName('${safeName}')"
+              style="margin-top:8px;width:100%;padding:6px 10px;font-size:12px;font-weight:500;color:#0f766e;background:#fff;border:1px solid #d1fae5;border-radius:6px;cursor:pointer;transition:all .15s;"
+              onmouseover="if(this.textContent==='复制'){this.style.background='#f0fdfa'}"
+              onmouseout="if(this.textContent==='复制'){this.style.background='#fff'}"
             >复制</button>
-            <div style="font-size:12px;color:#6b7280;">${loc.address}</div>
-            <div style="font-size:12px;color:#1677ff;margin-top:4px;">距${target.name} <b>${formatDistance(loc.distance)}</b> · 范围${loc.radius}米</div>
-          </div>`
-        );
+          </div>
+        `);
         infoWindowRef.current.open(map, loc.lnglat);
       }
       infoWindowTimerRef.current = null;
-    }, 650); // 比 panTo 动画稍长一点，确保动画完成
-  }, [selectedLocation, target.name]);
+    }, 650);
+  }, [selectedLocation, target, locations]);
 
-  // 定位到当前位置
+  // 定位
   const handleLocate = () => {
     const map = mapRef.current;
     if (!map || locating) return;
-
     if (!navigator.geolocation) {
-      alert('您的浏览器不支持定位功能');
+      setLocateError('浏览器不支持定位');
       return;
     }
-
     setLocating(true);
+    setLocateError(null);
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { longitude, latitude } = position.coords;
         const lnglat: [number, number] = [longitude, latitude];
-        setUserLocation(lnglat);
-
         const AMap = (window as any).AMap;
 
-        // 移除旧的用户位置标记
-        if (userMarkerRef.current) {
-          userMarkerRef.current.setMap(null);
-        }
+        if (userMarkerRef.current) userMarkerRef.current.setMap(null);
 
-        // 添加用户位置标记（蓝色圆点）
         const userMarker = new AMap.Marker({
           position: lnglat,
           zIndex: 200,
           content: `<div style="position:relative;width:0;height:0;">
-            <div style="position:absolute;left:-10px;top:-10px;width:20px;height:20px;background:#1677ff;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(22,119,255,.5);"></div>
-            <div style="position:absolute;left:-15px;top:-15px;width:30px;height:30px;background:rgba(22,119,255,.15);border-radius:50%;animation:pulse 2s infinite;"></div>
+            <div style="position:absolute;left:-22px;top:-22px;width:44px;height:44px;background:rgba(59,130,246,.18);border-radius:50%;animation:pulse 2s infinite;"></div>
+            <div style="position:absolute;left:-9px;top:-9px;width:18px;height:18px;background:#3b82f6;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 10px rgba(59,130,246,.6);"></div>
           </div>`,
           offset: new AMap.Pixel(0, 0),
         });
         userMarker.setMap(map);
         userMarkerRef.current = userMarker;
 
-        // 平滑平移到用户位置
         map.setZoom(15);
         map.panTo(lnglat, 600);
 
-        // 计算到目标地点的距离
-        const targetPos = new AMap.LngLat(target.lnglat[0], target.lnglat[1]);
-        const userPos = new AMap.LngLat(longitude, latitude);
-        const distance = Math.round(targetPos.distance(userPos));
+        const tp = new AMap.LngLat(target.lnglat[0], target.lnglat[1]);
+        const up = new AMap.LngLat(longitude, latitude);
+        const distance = Math.round(tp.distance(up));
 
-        // 延迟打开信息窗，等待平移动画完成
         setTimeout(() => {
           if (infoWindowRef.current) {
-            infoWindowRef.current.setContent(
-              `<div style="padding:6px 8px;min-width:140px;line-height:1.5;">
-                <div style="font-weight:600;font-size:13px;color:#1677ff;margin-bottom:3px;">📍 我的位置</div>
-                <div style="font-size:12px;color:#1677ff;">距${target.name} <b>${formatDistance(distance)}</b></div>
-              </div>`
-            );
+            infoWindowRef.current.setContent(`
+              <div style="font-family:Inter,-apple-system,system-ui,sans-serif;padding:12px 14px;min-width:180px;background:#fff;">
+                <div style="font-weight:600;font-size:13px;color:#1e40af;margin-bottom:4px;">📍 我的位置</div>
+                <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">已使用浏览器定位</div>
+                <div style="padding:6px 8px;background:#eff6ff;border-radius:6px;font-size:12px;color:#1e40af;">
+                  距 ${target.name} <b style="font-variant-numeric:tabular-nums;">${formatDistance(distance)}</b>
+                </div>
+              </div>
+            `);
             infoWindowRef.current.open(map, lnglat);
           }
         }, 650);
@@ -313,13 +351,13 @@ export default function MapComponent({
         setLocating(false);
       },
       (err) => {
-        console.error('定位失败:', err);
         let msg = '定位失败';
-        if (err.code === 1) msg = '定位权限被拒绝';
+        if (err.code === 1) msg = '已拒绝定位权限';
         else if (err.code === 2) msg = '位置信息不可用';
         else if (err.code === 3) msg = '定位超时';
-        alert(msg);
+        setLocateError(msg);
         setLocating(false);
+        setTimeout(() => setLocateError(null), 3500);
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
@@ -327,9 +365,18 @@ export default function MapComponent({
 
   if (error) {
     return (
-      <div className="w-full h-full flex items-center justify-center bg-gray-50">
-        <div className="text-center px-6">
-          <p className="text-gray-700 mb-1 font-medium">{error}</p>
+      <div className="w-full h-full flex items-center justify-center bg-slate-50">
+        <div className="text-center px-6 max-w-xs">
+          <div className="w-14 h-14 mx-auto mb-3 rounded-2xl bg-rose-50 flex items-center justify-center">
+            <AlertCircle
+              className="w-7 h-7 text-rose-500"
+              strokeWidth={1.75}
+            />
+          </div>
+          <p className="text-sm font-medium text-slate-900">{error}</p>
+          <p className="text-xs text-slate-500 mt-1">
+            请刷新页面或检查地图配置
+          </p>
         </div>
       </div>
     );
@@ -339,43 +386,68 @@ export default function MapComponent({
     <div className="relative w-full h-full">
       <div ref={mapContainerRef} className="w-full h-full" />
 
-      {/* 定位按钮 */}
+      {/* 浮层控件 */}
       {!loading && (
-        <button
-          onClick={handleLocate}
-          disabled={locating}
-          className="absolute bottom-6 right-6 z-20 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed border border-gray-200"
-          title="定位到我的位置"
-        >
-          {locating ? (
-            <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <svg
-              className="w-6 h-6 text-blue-600"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
+        <>
+          {/* 定位按钮（玻璃质感胶囊） */}
+          <button
+            onClick={handleLocate}
+            disabled={locating}
+            aria-label="定位到我的位置"
+            className="absolute right-4 z-20 inline-flex items-center justify-center gap-2 px-3.5 h-11 lg:h-11 bg-white/95 backdrop-blur-md rounded-full shadow-card border border-slate-200/60 hover:bg-white hover:shadow-elevated active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            style={{
+              // PC 顶部留点距离，移动端避开 BottomSheet peek 高度（132px + 16px gap）
+              bottom: 'calc(var(--safe-bottom, 0px) + 156px)',
+            }}
+          >
+            {locating ? (
+              <>
+                <Loader2
+                  className="w-4 h-4 text-brand-600 animate-spin"
+                  strokeWidth={2.5}
+                />
+                <span className="text-[13px] font-medium text-slate-700">
+                  定位中
+                </span>
+              </>
+            ) : (
+              <>
+                <LocateFixed
+                  className="w-4 h-4 text-brand-600"
+                  strokeWidth={2.25}
+                />
+                <span className="text-[13px] font-medium text-slate-700">
+                  我的位置
+                </span>
+              </>
+            )}
+          </button>
+
+          {/* PC 端把按钮放右下、不挤压 BottomSheet 区域：用 CSS 媒体查询单独定位 */}
+          <style>{`
+            @media (min-width: 1024px) {
+              [aria-label="定位到我的位置"] { bottom: 24px !important; }
+            }
+          `}</style>
+
+          {/* 定位错误提示（toast 风格） */}
+          {locateError && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 animate-fade-in-up">
+              <div className="inline-flex items-center gap-2 px-3.5 py-2 bg-rose-600 text-white text-sm font-medium rounded-full shadow-elevated">
+                <AlertCircle className="w-4 h-4" strokeWidth={2.5} />
+                {locateError}
+              </div>
+            </div>
           )}
-        </button>
+        </>
       )}
 
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
-          <div className="w-10 h-10 border-[3px] border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10">
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-10 h-10 border-[3px] border-brand-500 border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs text-slate-500">地图加载中…</p>
+          </div>
         </div>
       )}
     </div>

@@ -2,46 +2,120 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ------- 设计 Token：用 CSS 变量暴露，便于跨组件复用 ------- */
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 255, 255, 255;
-  --background-end-rgb: 255, 255, 255;
+  /* 距离语义色（HSL 便于做半透明） */
+  --c-near: 160 84% 39%;       /* emerald-500 */
+  --c-mid: 38 92% 50%;         /* amber-500 */
+  --c-far: 351 89% 60%;        /* rose-500 */
+  --c-selected: 152 76% 35%;   /* emerald-600 */
+
+  /* 中性 */
+  --c-ink: 222 47% 11%;        /* slate-900 */
+  --c-paper: 0 0% 100%;
+  --c-bg: 210 40% 98%;         /* slate-50 */
+
+  /* 安全区域（iOS 刘海/底部小白条） */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 17, 24, 39;
-    --background-end-rgb: 17, 24, 39;
-  }
+/* ------- 基础 ------- */
+html {
+  -webkit-tap-highlight-color: transparent;
+  text-size-adjust: 100%;       /* 横屏字体不要被浏览器放大 */
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  color: hsl(var(--c-ink));
+  background: hsl(var(--c-bg));
+  font-feature-settings: 'cv11', 'ss01';   /* Inter 中数字外观更精致 */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;   /* 防止 iOS Safari 上下橡皮筋 */
 }
 
-/* 自定义滚动条 */
+/* 全局移除原生焦点环，换成统一的 ring */
+*:focus {
+  outline: none;
+}
+*:focus-visible {
+  outline: 2px solid hsl(var(--c-selected));
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* 按钮/可点击 div 禁用文本选区，体验更接近原生 App */
+button,
+[role='button'] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* 输入框依然保留选区 */
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* ------- 滚动条（细、含玻璃感） ------- */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 10px;
+  background: hsl(215 16% 47% / 0.25);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(215 16% 47% / 0.45);
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #555;
+/* ------- 骨架屏光晕 ------- */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    hsl(210 16% 93%) 0%,
+    hsl(210 16% 97%) 50%,
+    hsl(210 16% 93%) 100%
+  );
+  background-size: 400px 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+/* ------- 高德 InfoWindow 默认尾巴和白色背景显得突兀，统一覆盖 ------- */
+.amap-info-content,
+.amap-info-content.amap-info-outer {
+  padding: 0 !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  box-shadow: 0 10px 30px -10px rgb(15 23 42 / 0.25) !important;
+  border: 1px solid rgb(226 232 240) !important;
+}
+.amap-info-sharp {
+  display: none !important; /* 隐藏底部小三角 */
+}
+.amap-info-close {
+  top: 8px !important;
+  right: 8px !important;
+  color: rgb(100 116 139) !important;
+}
+
+/* ------- 工具类：触摸目标兜底 44×44 ------- */
+.tap-target {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ------- iOS 输入框防自动缩放：字号 ≥ 16px ------- */
+@supports (-webkit-touch-callout: none) {
+  input[type='text'],
+  input[type='search'] {
+    font-size: 16px;
+  }
 }

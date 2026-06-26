@@ -78,7 +78,7 @@ export default function LocationList({
             placeholder="搜索地点名称"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-9 py-2.5 text-sm bg-slate-100 rounded-xl border border-transparent focus:bg-white focus:border-blue-400 focus:outline-none transition-colors"
+            className="w-full pl-9 pr-9 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 bg-slate-100 rounded-xl border border-transparent focus:bg-white focus:border-blue-400 focus:outline-none transition-colors"
           />
           {searchQuery && (
             <button

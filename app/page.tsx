@@ -54,9 +54,9 @@ export default function HomePage() {
           aria-label="切换地点列表"
         >
           {isMobileMenuOpen ? (
-            <X className="w-6 h-6 text-slate-700" />
+            <X className="w-6 h-6 text-slate-700" strokeWidth={2} />
           ) : (
-            <Menu className="w-6 h-6 text-slate-700" />
+            <Menu className="w-6 h-6 text-slate-700" strokeWidth={2} />
           )}
         </button>
       </header>

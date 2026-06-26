@@ -81,7 +81,7 @@ export default function MapComponent({
 
     let destroyed = false;
 
-    loadAMap({ key: apiKey })
+    loadAMap({ key: apiKey, plugins: ['AMap.Geocoder', 'AMap.AutoComplete'] })
       .then((AMap) => {
         if (destroyed || !mapContainerRef.current) return;
 

@@ -1,14 +1,27 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { Menu, X, MapPinned } from 'lucide-react';
 import LocationList from '@/components/LocationList';
+import TargetSearchInput from '@/components/TargetSearchInput';
 import type { Location, TargetLocation } from '@/types/location';
+import { calculateDistanceFromTarget } from '@/lib/utils';
 import locationsData from '@/data/locations.json';
 
-const target = locationsData.target as TargetLocation;
-const allLocations = locationsData.locations as Location[];
+const defaultTarget = locationsData.target as TargetLocation;
+const rawLocations = locationsData.locations as Location[];
+
+// 从 localStorage 加载自定义目标
+function loadSavedTarget(): TargetLocation | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const saved = localStorage.getItem('customTarget');
+    return saved ? JSON.parse(saved) : null;
+  } catch {
+    return null;
+  }
+}
 
 // 动态导入地图组件（避免 SSR 问题）
 const MapComponent = dynamic(() => import('@/components/MapComponent'), {
@@ -21,6 +34,25 @@ const MapComponent = dynamic(() => import('@/components/MapComponent'), {
 });
 
 export default function HomePage() {
+  // 目标地点（支持用户自定义），初始为默认值，避免 hydration 问题
+  const [target, setTarget] = useState<TargetLocation>(defaultTarget);
+
+  // 首次渲染后从 localStorage 恢复
+  useEffect(() => {
+    const saved = loadSavedTarget();
+    if (saved) {
+      setTarget(saved);
+    }
+  }, []);
+
+  // 基于当前 target 计算所有地点的距离
+  const locations = useMemo(() => {
+    return rawLocations.map((loc) => ({
+      ...loc,
+      distance: calculateDistanceFromTarget(target.lnglat, loc.lnglat),
+    }));
+  }, [target]);
+
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     null
   );
@@ -29,6 +61,19 @@ export default function HomePage() {
   const handleLocationClick = useCallback((location: Location) => {
     setSelectedLocation(location);
     setIsMobileMenuOpen(false); // 移动端选择后关闭侧栏
+  }, []);
+
+  // 切换目标地点
+  const handleTargetChange = useCallback((newTarget: TargetLocation) => {
+    setTarget(newTarget);
+    setSelectedLocation(null); // 清除当前选中
+
+    // 保存到 localStorage
+    try {
+      localStorage.setItem('customTarget', JSON.stringify(newTarget));
+    } catch (err) {
+      console.error('保存目标失败:', err);
+    }
   }, []);
 
   return (
@@ -73,18 +118,31 @@ export default function HomePage() {
             ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           `}
         >
-          <LocationList
-            locations={allLocations}
-            selectedLocation={selectedLocation}
-            onLocationSelect={handleLocationClick}
-            target={target}
-          />
+          <div className="h-full flex flex-col">
+            {/* 搜索输入区域 */}
+            <div className="p-4 border-b border-slate-200">
+              <TargetSearchInput
+                currentTarget={target}
+                onTargetChange={handleTargetChange}
+              />
+            </div>
+
+            {/* 地点列表 */}
+            <div className="flex-1 overflow-hidden">
+              <LocationList
+                locations={locations}
+                selectedLocation={selectedLocation}
+                onLocationSelect={handleLocationClick}
+                target={target}
+              />
+            </div>
+          </div>
         </aside>
 
         {/* 地图区域 */}
         <main className="flex-1 relative">
           <MapComponent
-            locations={allLocations}
+            locations={locations}
             target={target}
             selectedLocation={selectedLocation}
             onLocationClick={handleLocationClick}

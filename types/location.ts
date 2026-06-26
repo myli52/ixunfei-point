@@ -14,10 +14,11 @@ export interface Location {
 
 export interface TargetLocation {
   name: string;
-  /** 原始展示地址 */
-  address: string;
-  isTarget: true;
-  /** 预编码并固化的坐标 [经度, 纬度] */
+  /** 原始展示地址（默认目标有，用户自定义的没有） */
+  address?: string;
+  /** 是否为内置默认目标 */
+  isTarget?: boolean;
+  /** 坐标 [经度, 纬度] */
   lnglat: [number, number];
 }
 

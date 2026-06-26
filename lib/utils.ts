@@ -42,6 +42,23 @@ export function getDistanceColor(meters: number): string {
 }
 
 /**
+ * 批量计算地点到目标点的距离
+ */
+export function calculateDistanceFromTarget(
+  targetLnglat: [number, number],
+  locationLnglat: [number, number]
+): number {
+  return Math.round(
+    calculateDistance(
+      targetLnglat[0],
+      targetLnglat[1],
+      locationLnglat[0],
+      locationLnglat[1]
+    )
+  );
+}
+
+/**
  * 防抖函数
  */
 export function debounce<T extends (...args: any[]) => any>(

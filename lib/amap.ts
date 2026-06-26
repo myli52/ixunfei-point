@@ -46,3 +46,40 @@ export function loadAMap(config: AMapLoaderConfig): Promise<any> {
     document.head.appendChild(script);
   });
 }
+
+/**
+ * 地理编码：将地址/地点名称转换为坐标
+ */
+export async function geocodeAddress(
+  address: string
+): Promise<{ lnglat: [number, number]; formattedAddress: string }> {
+  const apiKey = process.env.NEXT_PUBLIC_AMAP_KEY;
+  if (!apiKey) {
+    throw new Error('缺少高德地图API Key');
+  }
+
+  // 确保 AMap 已加载，并加载 Geocoder 插件
+  const AMap = window.AMap || (await loadAMap({
+    key: apiKey,
+    plugins: ['AMap.Geocoder']
+  }));
+
+  return new Promise((resolve, reject) => {
+    AMap.plugin('AMap.Geocoder', () => {
+      const geocoder = new AMap.Geocoder({
+        city: '合肥', // 限定城市范围
+      });
+
+      geocoder.getLocation(address, (status: string, result: any) => {
+        if (status === 'complete' && result.geocodes && result.geocodes.length > 0) {
+          const location = result.geocodes[0].location;
+          const lnglat: [number, number] = [location.lng, location.lat];
+          const formattedAddress = result.geocodes[0].formattedAddress;
+          resolve({ lnglat, formattedAddress });
+        } else {
+          reject(new Error('未找到该地点，请尝试更详细的地址'));
+        }
+      });
+    });
+  });
+}

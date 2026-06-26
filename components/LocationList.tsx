@@ -49,24 +49,21 @@ export default function LocationList({
 
   return (
     <div className="h-full flex flex-col bg-white">
-      {/* 目标卡片 */}
-      <div className="px-5 pt-5 pb-4 bg-gradient-to-br from-blue-600 to-blue-500 text-white">
-        <div className="flex items-center gap-1.5 text-blue-100 text-xs mb-2">
-          <Star className="w-3.5 h-3.5 fill-current" />
-          <span>距离参照中心</span>
-        </div>
-        <h2 className="text-xl font-semibold tracking-tight mb-3">
-          {target.name}
-        </h2>
-        <div className="flex items-center gap-4 text-[13px]">
-          <span className="text-blue-50">
-            共 <b className="font-semibold">{locations.length}</b> 个地点
+      {/* 统计信息 */}
+      <div className="px-4 py-3 bg-slate-50 border-b border-slate-200">
+        <div className="flex items-center gap-4 text-xs text-slate-600">
+          <span>
+            共 <b className="font-semibold text-slate-900">{locations.length}</b> 个地点
           </span>
-          <span className="text-blue-100/80">
-            最近 {formatDistance(nearest)} · 最远 {formatDistance(farthest)}
+          <span>
+            最近 <b className="font-semibold text-green-600">{formatDistance(nearest)}</b>
+          </span>
+          <span>
+            最远 <b className="font-semibold text-red-600">{formatDistance(farthest)}</b>
           </span>
         </div>
       </div>
+
       {/* 搜索 + 排序 */}
       <div className="px-4 py-3 space-y-2.5 border-b border-slate-100">
         <div className="relative">

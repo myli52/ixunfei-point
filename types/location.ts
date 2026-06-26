@@ -1,4 +1,6 @@
 export interface Location {
+  /** 编号，对应数据源 locations 数组中的原始顺序（从 1 开始） */
+  id: number;
   name: string;
   /** 原始展示地址，严格保留数据源原文，不做任何修改 */
   address: string;

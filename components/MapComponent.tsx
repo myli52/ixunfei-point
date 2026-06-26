@@ -12,6 +12,16 @@ interface MapComponentProps {
   onLocationClick: (location: Location) => void;
 }
 
+// 普通编号标记样式（蓝色圆牌）
+function dotContent(id: number) {
+  return `<div style="display:flex;align-items:center;justify-content:center;width:24px;height:24px;background:#1677ff;color:#fff;font-size:12px;font-weight:600;border:2px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(22,119,255,.4);cursor:pointer;">${id}</div>`;
+}
+
+// 选中态标记样式（放大 + 绿色）
+function activeDotContent(id: number) {
+  return `<div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;background:#16a34a;color:#fff;font-size:15px;font-weight:700;border:3px solid #fff;border-radius:50%;box-shadow:0 4px 14px rgba(22,163,74,.6);cursor:pointer;">${id}</div>`;
+}
+
 export default function MapComponent({
   locations,
   target,
@@ -20,11 +30,12 @@ export default function MapComponent({
 }: MapComponentProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
-  const markerMapRef = useRef<Map<string, any>>(new Map());
+  const markerMapRef = useRef<Map<number, any>>(new Map());
+  const circleMapRef = useRef<Map<number, any>>(new Map());
+  const infoWindowRef = useRef<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // 初始化地图并一次性渲染所有标记（坐标已预编码，无需运行时地理编码）
   useEffect(() => {
     const apiKey = process.env.NEXT_PUBLIC_AMAP_KEY;
     const securityCode = process.env.NEXT_PUBLIC_AMAP_SECURITY_CODE;
@@ -52,29 +63,50 @@ export default function MapComponent({
         });
         mapRef.current = map;
 
+        const infoWindow = new AMap.InfoWindow({
+          offset: new AMap.Pixel(0, -16),
+          isCustom: false,
+        });
+        infoWindowRef.current = infoWindow;
+
         // 目标地点（红色水滴标记）
         const targetMarker = new AMap.Marker({
           position: target.lnglat,
-          zIndex: 200,
+          zIndex: 300,
           content:
-            '<div style="position:relative;width:0;height:0;"><div style="position:absolute;left:-13px;top:-30px;width:26px;height:26px;background:#ef4444;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(0,0,0,.35);"></div></div>',
+            '<div style="position:relative;width:0;height:0;"><div style="position:absolute;left:-15px;top:-34px;width:30px;height:30px;background:#ef4444;border:3px solid #fff;border-radius:50% 50% 50% 0;transform:rotate(-45deg);box-shadow:0 3px 10px rgba(0,0,0,.35);"></div><div style="position:absolute;left:-9px;top:-28px;width:18px;height:18px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;">★</div></div>',
           offset: new AMap.Pixel(0, 0),
         });
         targetMarker.setMap(map);
 
-        // 所有地点标记（蓝色圆点）
         const allMarkers = [targetMarker];
+
         locations.forEach((loc) => {
+          // 200/1000 米范围圈
+          const circle = new AMap.Circle({
+            center: loc.lnglat,
+            radius: loc.radius,
+            strokeColor: '#1677ff',
+            strokeOpacity: 0.4,
+            strokeWeight: 1,
+            fillColor: '#1677ff',
+            fillOpacity: 0.08,
+            bubble: true,
+          });
+          circle.setMap(map);
+          circleMapRef.current.set(loc.id, circle);
+
+          // 编号标记
           const marker = new AMap.Marker({
             position: loc.lnglat,
-            title: `${loc.name}（距目标 ${formatDistance(loc.distance)}）`,
-            content:
-              '<div style="width:16px;height:16px;background:#3b82f6;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(59,130,246,.6);cursor:pointer;"></div>',
-            offset: new AMap.Pixel(-8, -8),
+            title: `${loc.id}. ${loc.name}`,
+            content: dotContent(loc.id),
+            offset: new AMap.Pixel(-12, -12),
+            zIndex: 100,
           });
           marker.on('click', () => onLocationClick(loc));
           marker.setMap(map);
-          markerMapRef.current.set(loc.name, marker);
+          markerMapRef.current.set(loc.id, marker);
           allMarkers.push(marker);
         });
 
@@ -90,32 +122,78 @@ export default function MapComponent({
     return () => {
       destroyed = true;
       const markers = markerMapRef.current;
+      const circles = circleMapRef.current;
       if (mapRef.current) {
         mapRef.current.destroy();
         mapRef.current = null;
       }
       markers.clear();
+      circles.clear();
     };
   }, [locations, target, onLocationClick]);
 
-  // 选中地点时居中并放大
+  // 选中地点：居中、放大标记、弹出详情、高亮圆圈
   useEffect(() => {
-    if (!mapRef.current || !selectedLocation) return;
-    mapRef.current.setZoomAndCenter(15, selectedLocation.lnglat);
+    const map = mapRef.current;
+    if (!map) return;
 
-    // 选中标记放大高亮
-    markerMapRef.current.forEach((marker, name) => {
-      const isActive = name === selectedLocation.name;
-      marker.setContent(
-        isActive
-          ? '<div style="width:22px;height:22px;background:#1d4ed8;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(29,78,216,.7);cursor:pointer;"></div>'
-          : '<div style="width:16px;height:16px;background:#3b82f6;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(59,130,246,.6);cursor:pointer;"></div>'
-      );
-      marker.setOffset(
-        new (window as any).AMap.Pixel(isActive ? -11 : -8, isActive ? -11 : -8)
-      );
+    const AMap = (window as any).AMap;
+
+    // 重置所有标记与圆圈样式
+    markerMapRef.current.forEach((marker, id) => {
+      marker.setContent(dotContent(id));
+      marker.setOffset(new AMap.Pixel(-12, -12));
+      marker.setzIndex(100);
     });
-  }, [selectedLocation]);
+    circleMapRef.current.forEach((circle) => {
+      circle.setOptions({
+        strokeColor: '#1677ff',
+        strokeOpacity: 0.4,
+        strokeWeight: 1,
+        fillColor: '#1677ff',
+        fillOpacity: 0.08,
+      });
+    });
+
+    if (!selectedLocation) {
+      infoWindowRef.current?.close();
+      return;
+    }
+
+    const { id, name, address, radius, distance, lnglat } = selectedLocation;
+
+    // 高亮选中标记
+    const marker = markerMapRef.current.get(id);
+    if (marker) {
+      marker.setContent(activeDotContent(id));
+      marker.setOffset(new AMap.Pixel(-17, -17));
+      marker.setzIndex(250);
+    }
+    // 高亮选中圆圈
+    const circle = circleMapRef.current.get(id);
+    if (circle) {
+      circle.setOptions({
+        strokeColor: '#16a34a',
+        strokeOpacity: 0.9,
+        strokeWeight: 2,
+        fillColor: '#16a34a',
+        fillOpacity: 0.15,
+      });
+    }
+
+    // 居中并弹出信息窗
+    map.setZoomAndCenter(15, lnglat);
+    if (infoWindowRef.current) {
+      infoWindowRef.current.setContent(
+        `<div style="padding:4px 6px;min-width:160px;line-height:1.6;">
+          <div style="font-weight:600;font-size:14px;color:#1f2937;margin-bottom:4px;">${id}. ${name}</div>
+          <div style="font-size:12px;color:#6b7280;">${address}</div>
+          <div style="font-size:12px;color:#1677ff;margin-top:4px;">距${target.name} <b>${formatDistance(distance)}</b> · 范围${radius}米</div>
+        </div>`
+      );
+      infoWindowRef.current.open(map, lnglat);
+    }
+  }, [selectedLocation, target.name]);
 
   if (error) {
     return (

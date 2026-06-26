@@ -12,7 +12,7 @@ interface LocationListProps {
   target: TargetLocation;
 }
 
-type SortBy = 'distance' | 'name';
+type SortBy = 'distance' | 'id';
 
 export default function LocationList({
   locations,
@@ -29,9 +29,7 @@ export default function LocationList({
       (loc) => !q || loc.name.toLowerCase().includes(q)
     );
     result.sort((a, b) =>
-      sortBy === 'distance'
-        ? a.distance - b.distance
-        : a.name.localeCompare(b.name, 'zh-CN')
+      sortBy === 'distance' ? a.distance - b.distance : a.id - b.id
     );
     return result;
   }, [locations, searchQuery, sortBy]);
@@ -92,7 +90,7 @@ export default function LocationList({
         </div>
 
         <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
-          {(['distance', 'name'] as SortBy[]).map((key) => (
+          {(['distance', 'id'] as SortBy[]).map((key) => (
             <button
               key={key}
               onClick={() => setSortBy(key)}
@@ -102,7 +100,7 @@ export default function LocationList({
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              {key === 'distance' ? '按距离排序' : '按名称排序'}
+              {key === 'distance' ? '按距离排序' : '按编号排序'}
             </button>
           ))}
         </div>
@@ -118,20 +116,34 @@ export default function LocationList({
         ) : (
           <ul>
             {list.map((location) => {
-              const isSelected = selectedLocation?.name === location.name;
+              const isSelected = selectedLocation?.id === location.id;
               const color = getDistanceColor(location.distance);
               return (
-                <li key={location.name}>
+                <li key={location.id}>
                   <button
                     onClick={() => onLocationSelect(location)}
                     className={`w-full px-4 py-3 text-left flex items-center gap-3 border-l-[3px] transition-colors ${
                       isSelected
-                        ? 'bg-blue-50 border-blue-500'
+                        ? 'bg-green-50 border-green-500'
                         : 'border-transparent hover:bg-slate-50'
                     }`}
                   >
+                    {/* 编号徽章 */}
+                    <span
+                      className={`shrink-0 flex items-center justify-center w-7 h-7 rounded-full text-xs font-semibold tabular-nums transition-colors ${
+                        isSelected
+                          ? 'bg-green-600 text-white'
+                          : 'bg-blue-50 text-blue-600'
+                      }`}
+                    >
+                      {location.id}
+                    </span>
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-[14px] font-medium text-slate-800 truncate">
+                      <h3
+                        className={`text-[14px] font-medium truncate ${
+                          isSelected ? 'text-green-900' : 'text-slate-800'
+                        }`}
+                      >
                         {location.name}
                       </h3>
                       <p className="text-xs text-slate-400 truncate mt-0.5">

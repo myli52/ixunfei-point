@@ -8,7 +8,6 @@ import {
   Hash,
   SearchX,
   Navigation,
-  MapPin,
 } from 'lucide-react';
 import { formatDistance } from '@/lib/utils';
 import type { Location } from '@/types/location';
@@ -196,12 +195,8 @@ export default function LocationList({
                       >
                         {location.name}
                       </h3>
-                      <p className="flex items-center gap-1 text-[11px] text-slate-400 truncate mt-0.5">
-                        <MapPin
-                          className="w-3 h-3 shrink-0 text-slate-300"
-                          strokeWidth={2.25}
-                        />
-                        <span className="truncate">{location.address}</span>
+                      <p className="text-[11px] text-slate-400 truncate mt-0.5">
+                        {location.address}
                       </p>
                     </div>
 

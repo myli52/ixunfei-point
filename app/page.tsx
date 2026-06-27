@@ -234,13 +234,17 @@ export default function HomePage() {
               }`}
               style={{ paddingTop: 'var(--safe-top)' }}
             >
-              {/* 抽屉头：参照点信息 */}
+              {/* 抽屉头：品牌 + 参照点 */}
               <div className="px-4 pt-3 pb-3 border-b border-slate-100 shrink-0">
-                {/* 第一行：参照点名称 + 关闭按钮 */}
-                <div className="flex items-center justify-between gap-3 mb-2">
-                  <h2 className="flex-1 min-w-0 text-xl font-bold text-slate-900 leading-tight truncate">
-                    {target.name}
-                  </h2>
+                {/* 第一行：logo + 关闭按钮 */}
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <Image
+                    src="/logo.png"
+                    alt="Point"
+                    width={120}
+                    height={40}
+                    className="h-7 w-auto"
+                  />
                   <button
                     onClick={() => setDrawerOpen(false)}
                     aria-label="关闭列表"
@@ -250,17 +254,17 @@ export default function HomePage() {
                   </button>
                 </div>
 
-                {/* 第二行：标签 + 更换按钮 */}
+                {/* 第二行：参照点名称 + 更换参照点按钮 */}
                 <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs text-slate-500">
-                    距离参照中心
-                  </span>
+                  <h2 className="flex-1 min-w-0 text-xl font-bold text-slate-900 leading-tight truncate">
+                    {target.name}
+                  </h2>
                   <button
                     onClick={() => setSearchOpen(true)}
                     className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors"
                   >
                     <ArrowLeftRight className="w-3.5 h-3.5" strokeWidth={2.5} />
-                    更换
+                    更换参照点
                   </button>
                 </div>
               </div>

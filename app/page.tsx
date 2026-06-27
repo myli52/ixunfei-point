@@ -147,17 +147,20 @@ export default function HomePage() {
             {/* 顶部整合卡片：品牌 + 参照点 */}
             <div className="m-5 mb-4 bg-white rounded-2xl shadow-[0_2px_12px_rgba(15,23,42,0.08)] overflow-hidden">
               {/* 上半部：品牌区 */}
-              <div className="px-5 pt-5 pb-4">
+              <div className="px-5 pt-3.5 pb-2.5">
                 <Image
                   src="/logo.png"
                   alt="Point"
                   width={140}
                   height={46}
                   priority
-                  className="h-8 w-auto mb-2"
+                  className="h-8 w-auto mb-1"
                 />
                 <p className="text-xs text-slate-500 leading-tight">
                   合肥地区 · {locations.length} 个地点
+                </p>
+                <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
+                  实时距离计算 · 点击地图查看详情
                 </p>
               </div>
 
@@ -165,7 +168,7 @@ export default function HomePage() {
               <div className="border-t border-dashed border-slate-200 mx-5" />
 
               {/* 下半部：参照点区 */}
-              <div className="px-5 pt-4 pb-5">
+              <div className="px-5 pt-3 pb-4">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-[18px] h-[18px] rounded-full bg-brand-500 flex items-center justify-center">
                     <div className="w-1.5 h-1.5 rounded-full bg-white" />

@@ -2,11 +2,10 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { MapPinned } from 'lucide-react';
+import { MapPinned, ListFilter, X } from 'lucide-react';
 import LocationList from '@/components/LocationList';
 import TargetHero from '@/components/TargetHero';
-import BottomSheet, { SheetSnap } from '@/components/BottomSheet';
-import NearbyChips from '@/components/NearbyChips';
+import TargetSearchModal from '@/components/TargetSearchModal';
 import { useMediaQuery } from '@/lib/useMediaQuery';
 import { calculateDistanceFromTarget } from '@/lib/utils';
 import type { Location, TargetLocation } from '@/types/location';
@@ -42,7 +41,6 @@ export default function HomePage() {
   const [target, setTarget] = useState<TargetLocation>(defaultTarget);
   const [isCustomTarget, setIsCustomTarget] = useState(false);
 
-  // 首次渲染后从 localStorage 恢复（避免 SSR/CSR 不一致）
   useEffect(() => {
     const saved = loadSavedTarget();
     if (saved) {
@@ -63,15 +61,13 @@ export default function HomePage() {
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     null
   );
-
-  // 移动端 BottomSheet 档位
-  const [sheetSnap, setSheetSnap] = useState<SheetSnap>('peek');
+  const [drawerOpen, setDrawerOpen] = useState(false); // 移动端列表抽屉
+  const [searchOpen, setSearchOpen] = useState(false); // 更换中心弹层
 
   const handleLocationClick = useCallback(
     (location: Location) => {
       setSelectedLocation(location);
-      // 移动端选中后自动收起到 peek，让地图露出
-      if (!isDesktop) setSheetSnap('peek');
+      if (!isDesktop) setDrawerOpen(false); // 移动端选中后关抽屉露出地图
     },
     [isDesktop]
   );
@@ -94,24 +90,50 @@ export default function HomePage() {
     } catch {}
   }, []);
 
+  // 列表面板内容（PC 侧栏 / 移动抽屉共用）
+  const listPanel = (
+    <div className="h-full flex flex-col bg-white">
+      <TargetHero
+        target={target}
+        isCustom={isCustomTarget}
+        onOpenSearch={() => setSearchOpen(true)}
+      />
+      <div className="flex-1 min-h-0">
+        <LocationList
+          locations={locations}
+          selectedLocation={selectedLocation}
+          onLocationSelect={handleLocationClick}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <div className="h-[100dvh] flex flex-col overflow-hidden bg-slate-50">
-      {/* ============ 移动端 AppBar ============ */}
+      {/* ============ 移动端 AppBar（毛玻璃） ============ */}
       <header
-        className="lg:hidden bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 py-2.5 flex items-center gap-3 shrink-0 z-20"
+        className="lg:hidden absolute top-0 inset-x-0 z-30 bg-white/70 backdrop-blur-xl border-b border-white/40 shadow-[0_1px_12px_-4px_rgb(15_23_42/0.15)] px-4 pb-2.5 flex items-center gap-3"
         style={{ paddingTop: 'calc(var(--safe-top) + 0.625rem)' }}
       >
-        <div className="w-9 h-9 rounded-xl bg-brand-600 flex items-center justify-center shadow-soft">
-          <MapPinned className="w-5 h-5 text-white" strokeWidth={2.25} />
+        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center shadow-soft">
+          <MapPinned className="w-[18px] h-[18px] text-white" strokeWidth={2.25} />
         </div>
         <div className="flex-1 min-w-0">
-          <h1 className="text-[15px] font-semibold text-slate-900 leading-tight">
-            通勤距离速查
+          <h1 className="font-brand text-[19px] font-extrabold text-slate-900 leading-none tracking-tight">
+            Point
           </h1>
-          <p className="text-[11px] text-slate-500 leading-tight truncate">
+          <p className="text-[11px] text-slate-500 leading-tight truncate mt-0.5">
             以「{target.name}」为参照
           </p>
         </div>
+        <button
+          onClick={() => setDrawerOpen(true)}
+          aria-label="打开地点列表"
+          className="shrink-0 inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-white/80 border border-slate-200/80 text-[13px] font-medium text-slate-700 active:scale-95 transition-transform"
+        >
+          <ListFilter className="w-4 h-4" strokeWidth={2.25} />
+          列表
+        </button>
       </header>
 
       {/* ============ 主区域 ============ */}
@@ -119,36 +141,20 @@ export default function HomePage() {
         {/* PC 侧边栏 */}
         {isDesktop && (
           <aside className="w-[420px] xl:w-[440px] bg-white border-r border-slate-200 shrink-0 flex flex-col shadow-soft z-10">
-            {/* 桌面标题 */}
             <div className="px-5 pt-5 pb-2 flex items-center gap-3 shrink-0">
-              <div className="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center shadow-soft">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center shadow-soft">
                 <MapPinned className="w-5 h-5 text-white" strokeWidth={2.25} />
               </div>
               <div>
-                <h1 className="text-[17px] font-semibold text-slate-900 leading-tight">
-                  通勤距离速查
+                <h1 className="font-brand text-[22px] font-extrabold text-slate-900 leading-none tracking-tight">
+                  Point
                 </h1>
-                <p className="text-xs text-slate-500 leading-tight">
+                <p className="text-xs text-slate-500 leading-tight mt-1">
                   合肥地区 · {locations.length} 个地点
                 </p>
               </div>
             </div>
-
-            <TargetHero
-              target={target}
-              locations={locations}
-              onTargetChange={handleTargetChange}
-              onResetDefault={handleResetDefault}
-              isCustom={isCustomTarget}
-            />
-
-            <div className="flex-1 min-h-0">
-              <LocationList
-                locations={locations}
-                selectedLocation={selectedLocation}
-                onLocationSelect={handleLocationClick}
-              />
-            </div>
+            {listPanel}
           </aside>
         )}
 
@@ -162,91 +168,61 @@ export default function HomePage() {
           />
         </main>
 
-        {/* 移动端 BottomSheet */}
+        {/* 移动端：全屏列表抽屉 + 毛玻璃遮罩 */}
         {!isDesktop && (
-          <BottomSheet
-            snap={sheetSnap}
-            onSnapChange={setSheetSnap}
-            peekContent={
-              <>
-                <div className="px-4 pt-1 pb-2">
-                  <TargetHeroCompact
-                    target={target}
-                    onClickChange={() => setSheetSnap('half')}
-                    isCustom={isCustomTarget}
-                  />
+          <>
+            {/* 遮罩 */}
+            <div
+              className={`fixed inset-0 z-30 bg-slate-900/30 backdrop-blur-[2px] transition-opacity duration-300 ${
+                drawerOpen
+                  ? 'opacity-100'
+                  : 'opacity-0 pointer-events-none'
+              }`}
+              onClick={() => setDrawerOpen(false)}
+            />
+            {/* 抽屉本体（左侧滑出，近全屏） */}
+            <aside
+              className={`fixed inset-y-0 left-0 z-40 w-[88%] max-w-[420px] bg-white shadow-elevated flex flex-col transition-transform duration-300 ease-emphasized ${
+                drawerOpen ? 'translate-x-0' : '-translate-x-full'
+              }`}
+              style={{ paddingTop: 'var(--safe-top)' }}
+            >
+              {/* 抽屉头：关闭按钮 */}
+              <div className="px-4 py-3 flex items-center justify-between border-b border-slate-100 shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center">
+                    <MapPinned
+                      className="w-[17px] h-[17px] text-white"
+                      strokeWidth={2.25}
+                    />
+                  </div>
+                  <span className="text-[15px] font-semibold text-slate-900 tracking-tight">
+                    地点列表
+                  </span>
                 </div>
-                <NearbyChips
-                  locations={locations}
-                  selectedId={selectedLocation?.id}
-                  onSelect={(loc) => {
-                    handleLocationClick(loc);
-                  }}
-                />
-              </>
-            }
-          >
-            {/* 展开后的完整内容：Hero（含搜索） + 列表 */}
-            <div className="h-full flex flex-col">
-              <TargetHero
-                target={target}
-                locations={locations}
-                onTargetChange={handleTargetChange}
-                onResetDefault={handleResetDefault}
-                isCustom={isCustomTarget}
-              />
-              <div className="flex-1 min-h-0">
-                <LocationList
-                  locations={locations}
-                  selectedLocation={selectedLocation}
-                  onLocationSelect={handleLocationClick}
-                />
+                <button
+                  onClick={() => setDrawerOpen(false)}
+                  aria-label="关闭列表"
+                  className="w-9 h-9 -mr-1.5 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                >
+                  <X className="w-5 h-5" strokeWidth={2.25} />
+                </button>
               </div>
-            </div>
-          </BottomSheet>
+              <div className="flex-1 min-h-0">{listPanel}</div>
+            </aside>
+          </>
         )}
       </div>
-    </div>
-  );
-}
 
-/** 移动端 peek 态的紧凑型目标条 */
-function TargetHeroCompact({
-  target,
-  onClickChange,
-  isCustom,
-}: {
-  target: TargetLocation;
-  onClickChange: () => void;
-  isCustom: boolean;
-}) {
-  return (
-    <div className="flex items-center gap-2.5">
-      <div className="flex-1 min-w-0">
-        <div className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">
-          距离参照中心
-        </div>
-        <div className="flex items-center gap-1.5">
-          <h2 className="text-[15px] font-semibold text-slate-900 truncate">
-            {target.name}
-          </h2>
-          {isCustom && (
-            <span className="shrink-0 text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
-              自定义
-            </span>
-          )}
-        </div>
-      </div>
-      <button
-        onPointerDown={(e) => e.stopPropagation()}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClickChange();
-        }}
-        className="shrink-0 text-[12px] font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 px-2.5 py-1.5 rounded-lg transition-colors"
-      >
-        更换
-      </button>
+      {/* 更换参照中心弹层 */}
+      <TargetSearchModal
+        open={searchOpen}
+        currentTarget={target}
+        isCustom={isCustomTarget}
+        onClose={() => setSearchOpen(false)}
+        onTargetChange={handleTargetChange}
+        onResetDefault={handleResetDefault}
+      />
     </div>
   );
 }

@@ -20,18 +20,16 @@ interface LocationListProps {
 
 type SortBy = 'distance' | 'id';
 
-/** 根据距离返回语义色 token —— 与 DESIGN.md 一致 */
+/** 根据距离返回语义色 token —— 仅用于编号徽章与距离数字，做远近视觉编码 */
 function distanceTone(distance: number): {
   text: string;
   bg: string;
-  bar: string;
   ring: string;
 } {
   if (distance < 3000) {
     return {
       text: 'text-emerald-600',
       bg: 'bg-emerald-50',
-      bar: 'bg-emerald-500',
       ring: 'ring-emerald-200',
     };
   }
@@ -39,14 +37,12 @@ function distanceTone(distance: number): {
     return {
       text: 'text-amber-600',
       bg: 'bg-amber-50',
-      bar: 'bg-amber-500',
       ring: 'ring-amber-200',
     };
   }
   return {
     text: 'text-rose-600',
     bg: 'bg-rose-50',
-    bar: 'bg-rose-500',
     ring: 'ring-rose-200',
   };
 }
@@ -76,12 +72,6 @@ export default function LocationList({
     return arr;
   }, [filtered, sortBy]);
 
-  // 距离条归一化基准：当前可见列表最大距离
-  const maxDistance = useMemo(
-    () => sorted.reduce((m, l) => Math.max(m, l.distance), 0) || 1,
-    [sorted]
-  );
-
   // 选中项滚动到可视范围
   useEffect(() => {
     if (selectedLocation && selectedRef.current) {
@@ -107,7 +97,7 @@ export default function LocationList({
             placeholder="搜索地点名称"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-9 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 bg-slate-100 rounded-xl border border-transparent focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all"
+            className="w-full pl-9 pr-9 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 bg-slate-100 rounded-xl border border-transparent focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 focus:outline-none focus-visible:outline-none transition-all"
           />
           {searchQuery && (
             <button
@@ -172,7 +162,6 @@ export default function LocationList({
             {sorted.map((location) => {
               const isSelected = selectedLocation?.id === location.id;
               const tone = distanceTone(location.distance);
-              const barRatio = location.distance / maxDistance;
               return (
                 <li
                   key={location.id}
@@ -182,7 +171,7 @@ export default function LocationList({
                     onClick={() => onLocationSelect(location)}
                     className={`group w-full px-4 py-3 text-left flex items-center gap-3 border-l-[3px] transition-colors tap-target ${
                       isSelected
-                        ? 'bg-emerald-50 border-emerald-500'
+                        ? 'bg-brand-50 border-brand-500'
                         : 'border-transparent hover:bg-slate-50 active:bg-slate-100'
                     }`}
                   >
@@ -190,34 +179,25 @@ export default function LocationList({
                     <span
                       className={`shrink-0 flex items-center justify-center w-8 h-8 rounded-full text-xs font-semibold tabular-nums transition-all ${
                         isSelected
-                          ? 'bg-emerald-600 text-white ring-2 ring-emerald-200'
+                          ? 'bg-brand-600 text-white ring-2 ring-brand-200'
                           : `${tone.bg} ${tone.text} group-hover:ring-2 group-hover:${tone.ring}`
                       }`}
                     >
                       {location.id}
                     </span>
 
-                    {/* 名称 + 地址 + 距离条 */}
+                    {/* 名称 + 地址 */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <h3
-                          className={`text-[14px] font-medium truncate ${
-                            isSelected ? 'text-emerald-900' : 'text-slate-900'
-                          }`}
-                        >
-                          {location.name}
-                        </h3>
-                      </div>
+                      <h3
+                        className={`text-[14px] font-medium truncate ${
+                          isSelected ? 'text-brand-900' : 'text-slate-900'
+                        }`}
+                      >
+                        {location.name}
+                      </h3>
                       <p className="text-[11px] text-slate-400 truncate mt-0.5">
                         {location.address}
                       </p>
-                      {/* 距离条 */}
-                      <div className="mt-1.5 h-1 bg-slate-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full origin-left ${tone.bar} rounded-full animate-distance-bar`}
-                          style={{ transform: `scaleX(${barRatio})` }}
-                        />
-                      </div>
                     </div>
 
                     {/* 距离 */}

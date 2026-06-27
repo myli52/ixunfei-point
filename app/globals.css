@@ -40,10 +40,23 @@ body {
 *:focus {
   outline: none;
 }
+/* 给没有自定义焦点样式的元素（按钮、链接等）兜底一个可见焦点环 */
 *:focus-visible {
   outline: 2px solid hsl(var(--c-selected));
   outline-offset: 2px;
-  border-radius: 6px;
+}
+/* 表单输入控件自带 focus:border + focus:ring，无条件移除 outline，
+   避免首次聚焦时全局绿色 outline 闪现一帧 */
+input,
+textarea,
+select,
+input:focus,
+input:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+select:focus,
+select:focus-visible {
+  outline: none !important;
 }
 
 /* 按钮/可点击 div 禁用文本选区，体验更接近原生 App */
@@ -100,10 +113,24 @@ textarea {
 .amap-info-sharp {
   display: none !important; /* 隐藏底部小三角 */
 }
+/* 关闭按钮：增大点击区、置于右上、用圆形底避免与标题文字重叠 */
 .amap-info-close {
-  top: 8px !important;
-  right: 8px !important;
+  top: 6px !important;
+  right: 6px !important;
+  width: 26px !important;
+  height: 26px !important;
+  line-height: 26px !important;
+  text-align: center !important;
+  font-size: 18px !important;
   color: rgb(100 116 139) !important;
+  background: rgb(241 245 249) !important;
+  border-radius: 50% !important;
+  z-index: 2 !important;
+  transition: background 0.15s, color 0.15s !important;
+}
+.amap-info-close:hover {
+  background: rgb(226 232 240) !important;
+  color: rgb(51 65 85) !important;
 }
 
 /* ------- 工具类：触摸目标兜底 44×44 ------- */

@@ -26,9 +26,9 @@ function dotContent(id: number, distance: number) {
   return `<div style="display:flex;align-items:center;justify-content:center;width:26px;height:26px;background:${bg};color:#fff;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;border:2px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(15,23,42,.25);cursor:pointer;">${id}</div>`;
 }
 
-// 选中态标记（深蓝品牌色，最强视觉权重）
+// 选中态标记（蓝色品牌色，最强视觉权重）
 function activeDotContent(id: number) {
-  return `<div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:#10b981;color:#fff;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;border:3px solid #fff;border-radius:50%;box-shadow:0 6px 18px rgba(16,185,129,.55);cursor:pointer;">${id}</div>`;
+  return `<div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:#2563eb;color:#fff;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;border:3px solid #fff;border-radius:50%;box-shadow:0 6px 18px rgba(37,99,235,.55);cursor:pointer;">${id}</div>`;
 }
 
 // 目标地点标记（红色水滴 + 居中圆点）
@@ -72,26 +72,39 @@ export default function MapComponent({
 
     // 全局复制函数
     (window as any).__copyLocationName = (name: string) => {
-      navigator.clipboard
-        .writeText(name)
-        .then(() => {
-          const btn = document.querySelector(
-            '.amap-info-window button[data-action="copy"]'
-          ) as HTMLButtonElement;
-          if (btn) {
-            btn.textContent = '已复制';
-            btn.style.background = '#10b981';
-            btn.style.color = '#fff';
-            btn.style.borderColor = '#10b981';
-            setTimeout(() => {
-              btn.textContent = '复制';
-              btn.style.background = '#fff';
-              btn.style.color = '#0f766e';
-              btn.style.borderColor = '#d1fae5';
-            }, 1200);
+      const flip = (btn: HTMLButtonElement | null) => {
+        if (!btn) return;
+        btn.textContent = '✓ 已复制';
+        btn.style.background = '#16a34a';
+        btn.style.color = '#fff';
+        btn.style.borderColor = '#16a34a';
+        setTimeout(() => {
+          btn.textContent = '复制地点名称';
+          btn.style.background = '#fff';
+          btn.style.color = '#2563eb';
+          btn.style.borderColor = '#dbeafe';
+        }, 2000);
+      };
+      const btn = document.querySelector(
+        'button[data-action="copy"]'
+      ) as HTMLButtonElement;
+      navigator.clipboard.writeText(name).then(
+        () => flip(btn),
+        () => {
+          // 降级：execCommand
+          try {
+            const ta = document.createElement('textarea');
+            ta.value = name;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            flip(btn);
+          } catch {
+            alert('复制失败，请手动复制');
           }
-        })
-        .catch(() => alert('复制失败，请手动复制'));
+        }
+      );
     };
 
     let destroyed = false;
@@ -251,10 +264,10 @@ export default function MapComponent({
     const circle = circleMapRef.current.get(id);
     if (circle) {
       circle.setOptions({
-        strokeColor: '#10b981',
+        strokeColor: '#2563eb',
         strokeOpacity: 0.9,
         strokeWeight: 2,
-        fillColor: '#10b981',
+        fillColor: '#2563eb',
         fillOpacity: 0.15,
       });
     }
@@ -268,25 +281,25 @@ export default function MapComponent({
         const loc = selectedLocation;
         const safeName = loc.name.replace(/'/g, "\\'");
         infoWindowRef.current.setContent(`
-          <div style="font-family:Inter,-apple-system,system-ui,sans-serif;padding:12px 14px 11px;min-width:200px;max-width:260px;background:#fff;">
-            <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;">
-              <span style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#10b981;color:#fff;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;border-radius:50%;">${loc.id}</span>
-              <span style="flex:1;font-weight:600;font-size:14px;color:#0f172a;line-height:1.4;">${loc.name}</span>
+          <div style="font-family:Inter,-apple-system,system-ui,sans-serif;padding:14px 16px 13px;width:248px;box-sizing:border-box;background:#fff;">
+            <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:6px;padding-right:24px;">
+              <span style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;background:#2563eb;color:#fff;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;border-radius:50%;">${loc.id}</span>
+              <span style="flex:1;font-weight:600;font-size:14px;color:#0f172a;line-height:1.4;word-break:break-all;">${loc.name}</span>
             </div>
             <div style="font-size:11px;color:#94a3b8;line-height:1.5;margin-bottom:8px;">${loc.address}</div>
-            <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:#ecfdf5;border-radius:8px;font-size:12px;color:#065f46;">
+            <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:#eff6ff;border-radius:8px;font-size:12px;color:#1e3a8a;white-space:nowrap;">
               <span>距离</span>
-              <b style="font-variant-numeric:tabular-nums;color:#10b981;font-weight:700;">${formatDistance(loc.distance)}</b>
-              <span style="color:#94a3b8;">·</span>
+              <b style="font-variant-numeric:tabular-nums;color:#2563eb;font-weight:700;">${formatDistance(loc.distance)}</b>
+              <span style="color:#cbd5e1;">·</span>
               <span style="color:#475569;">范围 ${loc.radius} 米</span>
             </div>
             <button
               data-action="copy"
               onclick="window.__copyLocationName('${safeName}')"
-              style="margin-top:8px;width:100%;padding:6px 10px;font-size:12px;font-weight:500;color:#0f766e;background:#fff;border:1px solid #d1fae5;border-radius:6px;cursor:pointer;transition:all .15s;"
-              onmouseover="if(this.textContent==='复制'){this.style.background='#f0fdfa'}"
-              onmouseout="if(this.textContent==='复制'){this.style.background='#fff'}"
-            >复制</button>
+              style="margin-top:10px;width:100%;padding:8px 10px;font-size:12px;font-weight:600;color:#2563eb;background:#fff;border:1px solid #dbeafe;border-radius:8px;cursor:pointer;transition:all .15s;"
+              onmouseover="if(this.getAttribute('data-action')==='copy'&&this.textContent==='复制地点名称'){this.style.background='#eff6ff'}"
+              onmouseout="if(this.textContent==='复制地点名称'){this.style.background='#fff'}"
+            >复制地点名称</button>
           </div>
         `);
         infoWindowRef.current.open(map, loc.lnglat);
@@ -336,10 +349,10 @@ export default function MapComponent({
         setTimeout(() => {
           if (infoWindowRef.current) {
             infoWindowRef.current.setContent(`
-              <div style="font-family:Inter,-apple-system,system-ui,sans-serif;padding:12px 14px;min-width:180px;background:#fff;">
-                <div style="font-weight:600;font-size:13px;color:#1e40af;margin-bottom:4px;">📍 我的位置</div>
+              <div style="font-family:Inter,-apple-system,system-ui,sans-serif;padding:14px 16px;width:200px;box-sizing:border-box;background:#fff;">
+                <div style="font-weight:600;font-size:13px;color:#1e40af;margin-bottom:4px;padding-right:24px;">📍 我的位置</div>
                 <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">已使用浏览器定位</div>
-                <div style="padding:6px 8px;background:#eff6ff;border-radius:6px;font-size:12px;color:#1e40af;">
+                <div style="padding:8px 10px;background:#eff6ff;border-radius:8px;font-size:12px;color:#1e40af;white-space:nowrap;">
                   距 ${target.name} <b style="font-variant-numeric:tabular-nums;">${formatDistance(distance)}</b>
                 </div>
               </div>
@@ -394,10 +407,10 @@ export default function MapComponent({
             onClick={handleLocate}
             disabled={locating}
             aria-label="定位到我的位置"
-            className="absolute right-4 z-20 inline-flex items-center justify-center gap-2 px-3.5 h-11 lg:h-11 bg-white/95 backdrop-blur-md rounded-full shadow-card border border-slate-200/60 hover:bg-white hover:shadow-elevated active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            className="absolute right-4 z-20 inline-flex items-center justify-center gap-2 px-3.5 h-11 bg-white/95 backdrop-blur-md rounded-full shadow-card border border-slate-200/60 hover:bg-white hover:shadow-elevated active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
-              // PC 顶部留点距离，移动端避开 BottomSheet peek 高度（132px + 16px gap）
-              bottom: 'calc(var(--safe-bottom, 0px) + 156px)',
+              // 移动端贴底（留安全区），PC 端由下方媒体查询覆盖
+              bottom: 'calc(var(--safe-bottom, 0px) + 24px)',
             }}
           >
             {locating ? (

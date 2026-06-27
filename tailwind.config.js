@@ -33,6 +33,7 @@ module.exports = {
           'Helvetica Neue',
           'sans-serif',
         ],
+        brand: ['var(--font-brand)', 'Sora', 'sans-serif'],
       },
       boxShadow: {
         // 抬升体系

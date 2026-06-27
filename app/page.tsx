@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
-import { MapPinned, ListFilter, X } from 'lucide-react';
+import Image from 'next/image';
+import { ListFilter, X } from 'lucide-react';
 import LocationList from '@/components/LocationList';
 import TargetHero from '@/components/TargetHero';
 import TargetSearchModal from '@/components/TargetSearchModal';
@@ -115,13 +116,15 @@ export default function HomePage() {
         className="lg:hidden absolute top-0 inset-x-0 z-30 bg-white/45 backdrop-blur-2xl border-b border-white/30 shadow-[0_1px_12px_-4px_rgb(15_23_42/0.12)] px-4 pb-2.5 flex items-center gap-3"
         style={{ paddingTop: 'calc(var(--safe-top) + 0.625rem)' }}
       >
-        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center shadow-soft">
-          <MapPinned className="w-[18px] h-[18px] text-white" strokeWidth={2.25} />
-        </div>
         <div className="flex-1 min-w-0">
-          <h1 className="font-brand text-[19px] font-extrabold text-slate-900 leading-none tracking-tight">
-            Point
-          </h1>
+          <Image
+            src="/logo.png"
+            alt="Point"
+            width={120}
+            height={32}
+            priority
+            className="h-7 w-auto"
+          />
           <p className="text-[11px] text-slate-500 leading-tight truncate mt-0.5">
             以「{target.name}」为参照
           </p>
@@ -142,14 +145,16 @@ export default function HomePage() {
         {isDesktop && (
           <aside className="w-[420px] xl:w-[440px] bg-white border-r border-slate-200 shrink-0 flex flex-col shadow-soft z-10">
             <div className="px-5 pt-5 pb-2 flex items-center gap-3 shrink-0">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center shadow-soft">
-                <MapPinned className="w-5 h-5 text-white" strokeWidth={2.25} />
-              </div>
               <div>
-                <h1 className="font-brand text-[22px] font-extrabold text-slate-900 leading-none tracking-tight">
-                  Point
-                </h1>
-                <p className="text-xs text-slate-500 leading-tight mt-1">
+                <Image
+                  src="/logo.png"
+                  alt="Point"
+                  width={160}
+                  height={42}
+                  priority
+                  className="h-9 w-auto"
+                />
+                <p className="text-xs text-slate-500 leading-tight mt-1.5">
                   合肥地区 · {locations.length} 个地点
                 </p>
               </div>
@@ -189,17 +194,9 @@ export default function HomePage() {
             >
               {/* 抽屉头：关闭按钮 */}
               <div className="px-4 py-3 flex items-center justify-between border-b border-slate-100 shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center">
-                    <MapPinned
-                      className="w-[17px] h-[17px] text-white"
-                      strokeWidth={2.25}
-                    />
-                  </div>
-                  <span className="text-[15px] font-semibold text-slate-900 tracking-tight">
-                    地点列表
-                  </span>
-                </div>
+                <span className="text-[15px] font-semibold text-slate-900 tracking-tight">
+                  地点列表
+                </span>
                 <button
                   onClick={() => setDrawerOpen(false)}
                   aria-label="关闭列表"

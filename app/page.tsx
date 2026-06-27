@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { ListFilter, X } from 'lucide-react';
+import { ListFilter, X, Replace } from 'lucide-react';
 import LocationList from '@/components/LocationList';
 import TargetHero from '@/components/TargetHero';
 import TargetSearchModal from '@/components/TargetSearchModal';
@@ -143,23 +143,68 @@ export default function HomePage() {
       <div className="flex-1 flex overflow-hidden relative">
         {/* PC 侧边栏 */}
         {isDesktop && (
-          <aside className="w-[420px] xl:w-[440px] bg-white border-r border-slate-200 shrink-0 flex flex-col shadow-soft z-10">
-            <div className="px-5 pt-5 pb-2 flex items-center gap-3 shrink-0">
-              <div>
+          <aside className="w-[420px] xl:w-[440px] bg-slate-50 border-r border-slate-200 shrink-0 flex flex-col z-10">
+            {/* 顶部整合卡片：品牌 + 参照点 */}
+            <div className="m-5 mb-4 bg-white rounded-2xl shadow-[0_2px_12px_rgba(15,23,42,0.08)] overflow-hidden">
+              {/* 上半部：品牌区 */}
+              <div className="px-5 pt-5 pb-4">
                 <Image
                   src="/logo.png"
                   alt="Point"
-                  width={160}
-                  height={42}
+                  width={140}
+                  height={46}
                   priority
-                  className="h-9 w-auto"
+                  className="h-8 w-auto mb-2"
                 />
-                <p className="text-xs text-slate-500 leading-tight mt-1.5">
+                <p className="text-xs text-slate-500 leading-tight">
                   合肥地区 · {locations.length} 个地点
                 </p>
               </div>
+
+              {/* 虚线分隔 */}
+              <div className="border-t border-dashed border-slate-200 mx-5" />
+
+              {/* 下半部：参照点区 */}
+              <div className="px-5 pt-4 pb-5">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-[18px] h-[18px] rounded-full bg-brand-500 flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                  </div>
+                  <span className="text-xs font-medium text-slate-600">
+                    当前参考点
+                  </span>
+                  {isCustomTarget && (
+                    <span className="ml-auto inline-flex items-center text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                      自定义
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="flex-1 min-w-0 text-2xl font-bold text-slate-900 leading-tight truncate">
+                    {target.name}
+                  </h2>
+                  <button
+                    onClick={() => setSearchOpen(true)}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors"
+                  >
+                    <Replace className="w-4 h-4" strokeWidth={2.5} />
+                    更换
+                  </button>
+                </div>
+              </div>
             </div>
-            {listPanel}
+
+            {/* 列表区 */}
+            <div className="flex-1 min-h-0 px-5">
+              <div className="h-full bg-white rounded-t-2xl shadow-[0_-2px_12px_rgba(15,23,42,0.04)] overflow-hidden">
+                <LocationList
+                  locations={locations}
+                  selectedLocation={selectedLocation}
+                  onLocationSelect={handleLocationClick}
+                />
+              </div>
+            </div>
           </aside>
         )}
 
@@ -192,20 +237,43 @@ export default function HomePage() {
               }`}
               style={{ paddingTop: 'var(--safe-top)' }}
             >
-              {/* 抽屉头：关闭按钮 */}
-              <div className="px-4 py-3 flex items-center justify-between border-b border-slate-100 shrink-0">
-                <span className="text-[15px] font-semibold text-slate-900 tracking-tight">
-                  地点列表
-                </span>
-                <button
-                  onClick={() => setDrawerOpen(false)}
-                  aria-label="关闭列表"
-                  className="w-9 h-9 -mr-1.5 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-                >
-                  <X className="w-5 h-5" strokeWidth={2.25} />
-                </button>
+              {/* 抽屉头：参照点信息 */}
+              <div className="px-4 pt-3 pb-3 border-b border-slate-100 shrink-0">
+                {/* 第一行：参照点名称 + 关闭按钮 */}
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <h2 className="flex-1 min-w-0 text-xl font-bold text-slate-900 leading-tight truncate">
+                    {target.name}
+                  </h2>
+                  <button
+                    onClick={() => setDrawerOpen(false)}
+                    aria-label="关闭列表"
+                    className="w-9 h-9 -mr-1.5 flex items-center justify-center rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+                  >
+                    <X className="w-5 h-5" strokeWidth={2.25} />
+                  </button>
+                </div>
+
+                {/* 第二行：标签 + 更换按钮 */}
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-xs text-slate-500">
+                    距离参照中心
+                  </span>
+                  <button
+                    onClick={() => setSearchOpen(true)}
+                    className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors"
+                  >
+                    <Replace className="w-3.5 h-3.5" strokeWidth={2.5} />
+                    更换
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 min-h-0">{listPanel}</div>
+              <div className="flex-1 min-h-0">
+                <LocationList
+                  locations={locations}
+                  selectedLocation={selectedLocation}
+                  onLocationSelect={handleLocationClick}
+                />
+              </div>
             </aside>
           </>
         )}

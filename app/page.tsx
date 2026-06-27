@@ -121,7 +121,7 @@ export default function HomePage() {
             src="/logo.png"
             alt="Point"
             width={120}
-            height={32}
+            height={42}
             priority
             className="h-7 w-auto"
           />
@@ -146,48 +146,36 @@ export default function HomePage() {
           <aside className="w-[420px] xl:w-[440px] bg-slate-50 border-r border-slate-200 shrink-0 flex flex-col z-10">
             {/* 顶部整合卡片：品牌 + 参照点 */}
             <div className="m-5 mb-4 bg-white rounded-2xl shadow-[0_2px_12px_rgba(15,23,42,0.08)] overflow-hidden">
-              {/* 上半部：品牌区（仅 logo） */}
-              <div className="px-5 pt-4 pb-3.5">
+              <div className="px-5 pt-4 pb-4">
+                {/* 第一行：logo */}
                 <Image
                   src="/logo.png"
                   alt="Point"
-                  width={140}
-                  height={46}
+                  width={170}
+                  height={60}
                   priority
-                  className="h-8 w-auto"
+                  className="h-10 w-auto mb-3"
                 />
-              </div>
 
-              {/* 虚线分隔 */}
-              <div className="border-t border-dashed border-slate-200 mx-5" />
-
-              {/* 下半部：参照点区 */}
-              <div className="px-5 pt-3.5 pb-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-[18px] h-[18px] rounded-full bg-brand-500 flex items-center justify-center">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                  </div>
-                  <span className="text-xs font-medium text-slate-600">
-                    当前参考点
-                  </span>
-                  {isCustomTarget && (
-                    <span className="ml-auto inline-flex items-center text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
-                      自定义
-                    </span>
-                  )}
-                </div>
-
+                {/* 第二行：参照点名称 + 更换参照点按钮 */}
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="flex-1 min-w-0 text-2xl font-bold text-slate-900 leading-tight truncate">
+                  <h2 className="flex-1 min-w-0 text-xl font-bold text-slate-900 leading-tight truncate">
                     {target.name}
                   </h2>
-                  <button
-                    onClick={() => setSearchOpen(true)}
-                    className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors"
-                  >
-                    <ArrowLeftRight className="w-4 h-4" strokeWidth={2.5} />
-                    更换
-                  </button>
+                  <div className="shrink-0 flex items-center gap-2">
+                    {isCustomTarget && (
+                      <span className="inline-flex items-center text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                        自定义
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setSearchOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors"
+                    >
+                      <ArrowLeftRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+                      更换参照点
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -241,9 +229,9 @@ export default function HomePage() {
                   <Image
                     src="/logo.png"
                     alt="Point"
-                    width={120}
-                    height={40}
-                    className="h-7 w-auto"
+                    width={150}
+                    height={53}
+                    className="h-9 w-auto"
                   />
                   <button
                     onClick={() => setDrawerOpen(false)}
@@ -256,7 +244,7 @@ export default function HomePage() {
 
                 {/* 第二行：参照点名称 + 更换参照点按钮 */}
                 <div className="flex items-center justify-between gap-3">
-                  <h2 className="flex-1 min-w-0 text-xl font-bold text-slate-900 leading-tight truncate">
+                  <h2 className="flex-1 min-w-0 text-lg font-bold text-slate-900 leading-tight truncate">
                     {target.name}
                   </h2>
                   <button

@@ -120,10 +120,10 @@ export default function HomePage() {
           <Image
             src="/logo.png"
             alt="Point"
-            width={120}
-            height={42}
+            width={110}
+            height={39}
             priority
-            className="h-7 w-auto"
+            className="h-[22px] w-auto"
           />
           <p className="text-[11px] text-slate-500 leading-tight truncate mt-0.5">
             以「{target.name}」为参照
@@ -151,10 +151,10 @@ export default function HomePage() {
                 <Image
                   src="/logo.png"
                   alt="Point"
-                  width={170}
-                  height={60}
+                  width={140}
+                  height={50}
                   priority
-                  className="h-10 w-auto mb-3"
+                  className="h-7 w-auto mb-3"
                 />
 
                 {/* 第二行：参照点名称 + 更换参照点按钮 */}
@@ -229,9 +229,9 @@ export default function HomePage() {
                   <Image
                     src="/logo.png"
                     alt="Point"
-                    width={150}
-                    height={53}
-                    className="h-9 w-auto"
+                    width={130}
+                    height={46}
+                    className="h-6 w-auto"
                   />
                   <button
                     onClick={() => setDrawerOpen(false)}

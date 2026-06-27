@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import { ListFilter, X, Replace } from 'lucide-react';
+import { ListFilter, X, ArrowLeftRight } from 'lucide-react';
 import LocationList from '@/components/LocationList';
 import TargetHero from '@/components/TargetHero';
 import TargetSearchModal from '@/components/TargetSearchModal';
@@ -146,29 +146,23 @@ export default function HomePage() {
           <aside className="w-[420px] xl:w-[440px] bg-slate-50 border-r border-slate-200 shrink-0 flex flex-col z-10">
             {/* 顶部整合卡片：品牌 + 参照点 */}
             <div className="m-5 mb-4 bg-white rounded-2xl shadow-[0_2px_12px_rgba(15,23,42,0.08)] overflow-hidden">
-              {/* 上半部：品牌区 */}
-              <div className="px-5 pt-3.5 pb-2.5">
+              {/* 上半部：品牌区（仅 logo） */}
+              <div className="px-5 pt-4 pb-3.5">
                 <Image
                   src="/logo.png"
                   alt="Point"
                   width={140}
                   height={46}
                   priority
-                  className="h-8 w-auto mb-1"
+                  className="h-8 w-auto"
                 />
-                <p className="text-xs text-slate-500 leading-tight">
-                  合肥地区 · {locations.length} 个地点
-                </p>
-                <p className="text-[11px] text-slate-400 leading-tight mt-0.5">
-                  实时距离计算 · 点击地图查看详情
-                </p>
               </div>
 
               {/* 虚线分隔 */}
               <div className="border-t border-dashed border-slate-200 mx-5" />
 
               {/* 下半部：参照点区 */}
-              <div className="px-5 pt-3 pb-4">
+              <div className="px-5 pt-3.5 pb-4">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-[18px] h-[18px] rounded-full bg-brand-500 flex items-center justify-center">
                     <div className="w-1.5 h-1.5 rounded-full bg-white" />
@@ -191,7 +185,7 @@ export default function HomePage() {
                     onClick={() => setSearchOpen(true)}
                     className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-2 text-sm font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors"
                   >
-                    <Replace className="w-4 h-4" strokeWidth={2.5} />
+                    <ArrowLeftRight className="w-4 h-4" strokeWidth={2.5} />
                     更换
                   </button>
                 </div>
@@ -265,7 +259,7 @@ export default function HomePage() {
                     onClick={() => setSearchOpen(true)}
                     className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 text-[13px] font-medium text-brand-700 bg-brand-50 hover:bg-brand-100 rounded-lg transition-colors"
                   >
-                    <Replace className="w-3.5 h-3.5" strokeWidth={2.5} />
+                    <ArrowLeftRight className="w-3.5 h-3.5" strokeWidth={2.5} />
                     更换
                   </button>
                 </div>

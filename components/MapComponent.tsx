@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { LocateFixed, Loader2, AlertCircle } from 'lucide-react';
 import { loadAMap } from '@/lib/amap';
 import { formatDistance } from '@/lib/utils';
+import { wgs84ToGcj02 } from '@/lib/coordTransform';
 import type { Location, TargetLocation } from '@/types/location';
 
 interface MapComponentProps {
@@ -321,8 +322,9 @@ export default function MapComponent({
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { longitude, latitude } = position.coords;
-        const lnglat: [number, number] = [longitude, latitude];
+        const { longitude, latitude, accuracy } = position.coords;
+        // 浏览器返回 WGS-84，高德地图用 GCJ-02，需转换否则偏移数百米
+        const lnglat = wgs84ToGcj02(longitude, latitude);
         const AMap = (window as any).AMap;
 
         if (userMarkerRef.current) userMarkerRef.current.setMap(null);
@@ -343,15 +345,18 @@ export default function MapComponent({
         map.panTo(lnglat, 600);
 
         const tp = new AMap.LngLat(target.lnglat[0], target.lnglat[1]);
-        const up = new AMap.LngLat(longitude, latitude);
+        const up = new AMap.LngLat(lnglat[0], lnglat[1]);
         const distance = Math.round(tp.distance(up));
+        const acc = accuracy ? Math.round(accuracy) : null;
 
         setTimeout(() => {
           if (infoWindowRef.current) {
             infoWindowRef.current.setContent(`
               <div style="font-family:Inter,-apple-system,system-ui,sans-serif;padding:14px 16px;width:200px;box-sizing:border-box;background:#fff;">
                 <div style="font-weight:600;font-size:13px;color:#1e40af;margin-bottom:4px;padding-right:24px;">📍 我的位置</div>
-                <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">已使用浏览器定位</div>
+                <div style="font-size:11px;color:#94a3b8;margin-bottom:6px;">已使用浏览器定位${
+                  acc ? ` · 精度约 ${acc} 米` : ''
+                }</div>
                 <div style="padding:8px 10px;background:#eff6ff;border-radius:8px;font-size:12px;color:#1e40af;white-space:nowrap;">
                   距 ${target.name} <b style="font-variant-numeric:tabular-nums;">${formatDistance(distance)}</b>
                 </div>
@@ -407,7 +412,7 @@ export default function MapComponent({
             onClick={handleLocate}
             disabled={locating}
             aria-label="定位到我的位置"
-            className="absolute right-4 z-20 inline-flex items-center justify-center gap-2 px-3.5 h-11 bg-white/95 backdrop-blur-md rounded-full shadow-card border border-slate-200/60 hover:bg-white hover:shadow-elevated active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+            className="absolute right-4 z-20 inline-flex items-center justify-center gap-2 px-3.5 h-11 bg-white/60 backdrop-blur-2xl rounded-full shadow-[0_4px_20px_-2px_rgba(15,23,42,0.18)] border border-white/40 hover:bg-white/75 active:scale-95 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
             style={{
               // 移动端贴底（留安全区），PC 端由下方媒体查询覆盖
               bottom: 'calc(var(--safe-bottom, 0px) + 24px)',

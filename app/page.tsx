@@ -112,7 +112,7 @@ export default function HomePage() {
     <div className="h-[100dvh] flex flex-col overflow-hidden bg-slate-50">
       {/* ============ 移动端 AppBar（毛玻璃） ============ */}
       <header
-        className="lg:hidden absolute top-0 inset-x-0 z-30 bg-white/70 backdrop-blur-xl border-b border-white/40 shadow-[0_1px_12px_-4px_rgb(15_23_42/0.15)] px-4 pb-2.5 flex items-center gap-3"
+        className="lg:hidden absolute top-0 inset-x-0 z-30 bg-white/45 backdrop-blur-2xl border-b border-white/30 shadow-[0_1px_12px_-4px_rgb(15_23_42/0.12)] px-4 pb-2.5 flex items-center gap-3"
         style={{ paddingTop: 'calc(var(--safe-top) + 0.625rem)' }}
       >
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-brand-600 flex items-center justify-center shadow-soft">

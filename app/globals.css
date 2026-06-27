@@ -146,3 +146,11 @@ textarea {
     font-size: 16px;
   }
 }
+
+/* ------- 移动端隐藏高德 logo / 版权（避免浮于抽屉、弹层之上） ------- */
+@media (max-width: 1023px) {
+  .amap-logo,
+  .amap-copyright {
+    display: none !important;
+  }
+}

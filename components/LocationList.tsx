@@ -83,9 +83,9 @@ export default function LocationList({
   }, [selectedLocation]);
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full flex flex-col">
       {/* 搜索 + 排序 */}
-      <div className="px-4 pt-3 pb-2 space-y-2.5 bg-white border-b border-slate-100">
+      <div className="px-4 pt-3 pb-2 space-y-2.5 border-b border-slate-200/50">
         {/* 搜索 */}
         <div className="relative">
           <Search
@@ -97,7 +97,7 @@ export default function LocationList({
             placeholder="搜索地点名称"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-9 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 bg-slate-100 rounded-xl border border-transparent focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 focus:outline-none focus-visible:outline-none transition-all"
+            className="w-full pl-9 pr-9 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 bg-white/40 backdrop-blur-sm rounded-xl border border-white/60 focus:bg-white/60 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 focus:outline-none focus-visible:outline-none transition-all"
           />
           {searchQuery && (
             <button
@@ -114,7 +114,7 @@ export default function LocationList({
         <div className="flex items-center justify-between gap-3">
           <div
             role="tablist"
-            className="inline-flex items-center bg-slate-100 p-1 rounded-lg"
+            className="inline-flex items-center bg-white/40 backdrop-blur-sm p-1 rounded-lg"
           >
             <SortTab
               active={sortBy === 'distance'}
@@ -169,10 +169,10 @@ export default function LocationList({
                 >
                   <button
                     onClick={() => onLocationSelect(location)}
-                    className={`group w-full px-4 py-3 text-left flex items-center gap-3 border-l-[3px] transition-colors tap-target ${
+                    className={`group w-full px-4 py-3 text-left flex items-center gap-3 border-l-[3px] transition-all tap-target ${
                       isSelected
-                        ? 'bg-brand-50 border-brand-500'
-                        : 'border-transparent hover:bg-slate-50 active:bg-slate-100'
+                        ? 'bg-brand-50/60 backdrop-blur-sm border-brand-500'
+                        : 'border-transparent hover:bg-white/30 hover:backdrop-blur-sm active:bg-white/40'
                     }`}
                   >
                     {/* 编号徽章 */}
@@ -241,8 +241,8 @@ function SortTab({
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 text-[13px] font-medium rounded-md transition-all ${
         active
-          ? 'bg-white text-brand-700 shadow-soft'
-          : 'text-slate-500 hover:text-slate-700'
+          ? 'bg-white/80 backdrop-blur-sm text-brand-700 shadow-sm'
+          : 'text-slate-600 hover:text-slate-800 hover:bg-white/40'
       }`}
     >
       {icon}
